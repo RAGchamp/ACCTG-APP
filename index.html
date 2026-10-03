@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How the Accounting Agent Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/vs2015.min.css">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-light:#6ea8fe;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-orange:#e8710a;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  /* Sticky top nav */
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue);
+    color:var(--nav-yellow);
+    padding:.9rem 1.5rem;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  section[id]{ scroll-margin-top:84px; }
+  html{ scroll-behavior:smooth; }
+
+  .hero{
+    background:linear-gradient(120deg, var(--biz-blue-dark) 0%, var(--biz-blue) 55%, #3d8bfd 100%);
+    color:#fff;
+  }
+  .accent-blue{ border-left:5px solid var(--biz-blue); }
+  .accent-green{ border-left:5px solid var(--biz-green); }
+  .accent-red{ border-left:5px solid var(--biz-red); }
+  .accent-yellow{ border-left:5px solid var(--biz-yellow); }
+  .accent-orange{ border-left:5px solid var(--biz-orange); }
+
+  .section-title{
+    display:inline-flex; align-items:center; gap:.6rem;
+    padding-bottom:.4rem; border-bottom:3px solid var(--biz-blue);
+    margin-bottom:1.25rem;
+  }
+  .toc-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.8rem; height:1.8rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:700; font-size:.85rem;
+    margin-right:.5rem; flex:none;
+  }
+  .toc-list a{ text-decoration:none; color:#212529; }
+  .toc-list a:hover{ color:var(--biz-blue); text-decoration:underline; }
+  .toc-item{ display:flex; align-items:center; padding:.4rem 0; }
+  .back-to-top{ font-size:.85rem; }
+  .color-key-dot{ width:.9rem; height:.9rem; border-radius:50%; display:inline-block; margin-right:.4rem; }
+  table thead th{ background:#eef3fb; }
+  .glossary-table thead th{ background:#04264d; color:#fff; }
+
+  /* VS Code style dark code windows */
+  .code-window{ background:#084298; border-radius:.5rem; overflow:hidden; margin:1rem 0 1.5rem; box-shadow:0 .25rem .75rem rgba(0,0,0,.3); }
+  .code-window .code-titlebar{
+    background:#323233; color:#cccccc; padding:.45rem .9rem; font-size:.8rem;
+    display:flex; align-items:center; gap:.4rem; font-family:'Segoe UI',Roboto,sans-serif;
+  }
+  .code-window .dot{ width:.7rem; height:.7rem; border-radius:50%; display:inline-block; }
+  .dot-red{ background:#ff5f56; } .dot-yellow{ background:#ffbd2e; } .dot-green{ background:#27c93f; }
+  .code-window .code-filename{ margin-left:.5rem; opacity:.85; }
+  .code-window pre{ margin:0 !important; padding:1rem 1.25rem !important; background:#084298 !important; overflow-x:auto; }
+  .code-window code, .code-window code *{ font-family:'Fira Code',Consolas,Monaco,monospace; font-size:.85rem; background:transparent !important; color:#ffffff !important; font-weight:700 !important; text-shadow:none; }
+
+  .badge-tool{ background:#04264d; color:var(--nav-yellow); }
+
+  /* Step-by-step walkthrough boxes */
+  .step-box{
+    background:#e9ecef;
+    border-radius:.5rem;
+    overflow:hidden;
+    margin:0 0 1.25rem;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.12);
+  }
+  .step-box .step-bar{
+    background:var(--nav-blue);
+    color:#5BF527;
+    font-weight:700;
+    padding:.5rem 1.1rem;
+    font-size:.95rem;
+    letter-spacing:.02em;
+  }
+  .step-box .step-bar .step-title{ font-weight:700; }
+  .step-box .step-body{ padding:1rem 1.25rem; }
+  .step-box .step-body p:last-child{ margin-bottom:0; }
+  .step-box .step-file{
+    font-family:'Fira Code',Consolas,Monaco,monospace;
+    font-size:.8rem;
+    margin-bottom:.7rem;
+  }
+  .step-box .step-file mark{
+    background:var(--biz-yellow);
+    color:#2b2b2b;
+    padding:.15rem .5rem;
+    border-radius:.25rem;
+    font-weight:600;
+  }
+  .step-box .step-file .arrow{ color:#6c757d; margin:0 .3rem; font-family:'Segoe UI',Roboto,sans-serif; }
+
+  /* Small mock-ups of the app's own UI */
+  .mock{ border:1px solid #ced4da; border-radius:.4rem; background:#fff; overflow:hidden; font-size:.82rem; }
+  .mock-nav{ background:#f1f3f5; border-bottom:1px solid #dee2e6; padding:.45rem .8rem; display:flex; flex-wrap:wrap; gap:.9rem; align-items:center; }
+  .mock-nav .brand{ font-weight:600; }
+  .mock-nav .brand small{ font-weight:400; opacity:.7; }
+  .mock-nav .on{ color:#000; font-weight:600; }
+  .mock-nav span{ color:#6c757d; }
+  .mock-select{ margin-left:auto; border:1px solid #adb5bd; border-radius:.3rem; padding:.1rem .5rem; background:#fff; color:#212529 !important; }
+  .mock-orange{ background:var(--biz-orange); color:#fff; padding:.25rem .8rem; }
+  .callout-num{ display:inline-flex; align-items:center; justify-content:center; width:1.35rem; height:1.35rem; border-radius:50%; background:var(--biz-red); color:#fff; font-size:.72rem; font-weight:700; margin:0 .2rem; vertical-align:middle; }
+
+  .flow{ display:flex; flex-wrap:wrap; gap:.4rem; align-items:stretch; }
+  .flow .node{ flex:1 1 130px; background:#fff; border:1px solid #dee2e6; border-top:4px solid var(--biz-blue); border-radius:.4rem; padding:.55rem .6rem; font-size:.8rem; }
+  .flow .node b{ display:block; font-size:.85rem; }
+  .flow .node.claude{ border-top-color:#8250df; }
+  .flow .node.human{ border-top-color:var(--biz-green); }
+  .flow .node.code{ border-top-color:var(--biz-blue); }
+  .flow .arrow{ align-self:center; color:#6c757d; font-weight:700; }
+  .who{ font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+
+  .doc-shot{ max-width:100%; border:1px solid #ced4da; box-shadow:0 .2rem .6rem rgba(0,0,0,.15); background:#fff; }
+  .tbl-mini td, .tbl-mini th{ padding:.2rem .45rem; }
+  .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <span class="brand"><img class="brand-logo" src="logo.svg" alt="RAG Champ"></span>
+  <div class="tagline">SMALL BUSINESS ACCOUNTING AGENT</div>
+</div>
+
+<!-- HERO -->
+<header class="hero py-5">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-9">
+        <span class="badge rounded-pill bg-warning text-dark mb-3">Accounting Agent · MVP 1 · Flask + Claude Code</span>
+        <h1 class="display-6 fw-bold">How the Accounting Agent Works</h1>
+        <p class="lead mb-0">A local Flask app that keeps the books of a take-out and delivery pizza shop in Hartford, CT (a single-member LLC). The owner scans paperwork: receipts, card and bank statements, checks, handwritten cash sheets, Square reports, DoorDash / Uber Eats / Grubhub statements and payroll reports. <strong>Claude reads each document and proposes journal entries.</strong> The owner <strong>reviews</strong> every proposal. Accepted entries go into a strict double-entry <strong>General Ledger</strong>, and <strong>code (never Claude)</strong> builds the financial statements and the draft tax worksheets from it. This document explains each screen, the <em>Live books / Sandbox</em> switch in the top right, the whole cycle from a scanned page to a tax worksheet, how to inspect any scanned document and see exactly what was read from it, and how every change to the ledger is traced. <span class="d-block mt-2 small">Last updated 2026-10-02.</span></p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container my-5">
+
+  <!-- COLOR KEY -->
+  <div class="mb-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body py-3">
+        <div class="row g-2 small text-center text-md-start">
+          <div class="col-6 col-md"><span class="color-key-dot" style="background:var(--biz-blue);"></span>Blue: how it works</div>
+          <div class="col-6 col-md"><span class="color-key-dot" style="background:var(--biz-green);"></span>Green: what you do / takeaways</div>
+          <div class="col-6 col-md"><span class="color-key-dot" style="background:var(--biz-yellow);"></span>Yellow: definitions &amp; background</div>
+          <div class="col-6 col-md"><span class="color-key-dot" style="background:var(--biz-orange);"></span>Orange: sandbox / test data</div>
+          <div class="col-12 col-md"><span class="color-key-dot" style="background:var(--biz-red);"></span>Red: watch out</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- WHAT'S NEW -->
+  <div class="mb-5">
+    <div class="card shadow-sm accent-green">
+      <div class="card-body">
+        <h5>What's new (2026-10-02)</h5>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle small mb-0">
+            <thead><tr><th>Change</th><th>What it gives you</th><th>Section</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Input docs</strong> screen</td><td>Pick live and/or sandbox documents and see each scan next to its extracted data and where it landed in the ledger, the statements and the tax worksheets; save feedback as JSON and re-process.</td><td><a href="#scr-inputdocs">Input docs</a></td></tr>
+              <tr><td><strong>New look</strong> on every screen</td><td>Navy RAG Champ top bar, centered menu, light-yellow overview box with key figures, light-blue headers, striped tables; yellow column headers with column borders on the Dashboard, Ledger, Reconcile, Reports and OS-114 tables.</td><td><a href="#layout">The look of every page</a></td></tr>
+              <tr><td><strong>Ledger trail</strong> page</td><td>Every change ever made to the ledger (posted, reversed, reinstated, months closed and reopened), with when, from which screen and why. Stored in the books, append-only.</td><td><a href="#scr-trail">Ledger trail</a></td></tr>
+              <tr><td><strong>Undo a reversal</strong></td><td><em>Reverse</em> on a reversal row posts the original entry again; a yellow help box on the Ledger explains it.</td><td><a href="#scr-ledger">Ledger</a></td></tr>
+              <tr><td><strong>Docs</strong> page</td><td>A user's guide inside the app, from setting up the business to the CPA package, with the books' progress at the top.</td><td><a href="#scr-docs">Docs</a></td></tr>
+              <tr><td><strong>Tax form</strong> column</td><td>The Dashboard's <em>Next tax dates</em> now shows Date · What is due · Tax form (e.g. OS-114, Form 1040-ES, CT-1040ES).</td><td><a href="#scr-dashboard">Dashboard</a></td></tr>
+              <tr><td><strong>Connecticut only</strong></td><td>Stated in the guide: the tax worksheets assume the business operates solely in Connecticut.</td><td><a href="#scr-taxes">Taxes</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <section id="toc" class="mb-5">
+    <h2 class="section-title">Table of Contents</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="row toc-list">
+          <div class="col-md-6">
+            <div class="toc-item"><span class="toc-num">1</span><a href="#overview">What the App Does</a></div>
+            <div class="toc-item"><span class="toc-num">2</span><a href="#books">Live Books vs. Sandbox (the top-right switch)</a></div>
+            <div class="toc-item"><span class="toc-num">3</span><a href="#layout">The Look of Every Page</a></div>
+            <div class="toc-item"><span class="toc-num">4</span><a href="#cycle">The Whole Cycle at a Glance</a></div>
+            <div class="toc-item"><span class="toc-num">5</span><a href="#statuses">File &amp; Document Statuses</a></div>
+            <div class="toc-item"><span class="toc-num">6</span><a href="#scr-dashboard">Screen: Dashboard</a></div>
+            <div class="toc-item"><span class="toc-num">7</span><a href="#scr-inbox">Screen: Inbox (scans in, extraction)</a></div>
+            <div class="toc-item"><span class="toc-num">8</span><a href="#scr-review">Screen: Review (proposals, accept / edit / feedback)</a></div>
+            <div class="toc-item"><span class="toc-num">9</span><a href="#scr-ledger">Screen: Ledger</a></div>
+            <div class="toc-item"><span class="toc-num">10</span><a href="#scr-trail">Screen: Ledger Trail</a></div>
+            <div class="toc-item"><span class="toc-num">11</span><a href="#scr-reconcile">Screen: Reconcile &amp; Month Close</a></div>
+            <div class="toc-item"><span class="toc-num">12</span><a href="#scr-reports">Screen: Reports (financial statements)</a></div>
+            <div class="toc-item"><span class="toc-num">13</span><a href="#scr-taxes">Screen: Taxes</a></div>
+          </div>
+          <div class="col-md-6">
+            <div class="toc-item"><span class="toc-num">14</span><a href="#scr-testdata">Screen: Test data &amp; Answer key</a></div>
+            <div class="toc-item"><span class="toc-num">15</span><a href="#scr-setup">Screen: Setup</a></div>
+            <div class="toc-item"><span class="toc-num">16</span><a href="#scr-inputdocs">Screen: Input docs (review input documents, feedback, re-process)</a></div>
+            <div class="toc-item"><span class="toc-num">17</span><a href="#scr-docs">Screen: Docs (the user's guide)</a></div>
+            <div class="toc-item"><span class="toc-num">18</span><a href="#inspect">Inspecting a Scanned Document &amp; What Was Extracted</a></div>
+            <div class="toc-item"><span class="toc-num">19</span><a href="#walkthrough">Step-by-Step: One Receipt, Scan to Tax Line</a></div>
+            <div class="toc-item"><span class="toc-num">20</span><a href="#double">How Money Is Kept from Being Booked Twice</a></div>
+            <div class="toc-item"><span class="toc-num">21</span><a href="#claude-vs-code">Where Claude Is Used, Where Code Decides</a></div>
+            <div class="toc-item"><span class="toc-num">22</span><a href="#month">A Month in the Live Books (owner's checklist)</a></div>
+            <div class="toc-item"><span class="toc-num">23</span><a href="#first-test">Your First Test Run in a Sandbox</a></div>
+            <div class="toc-item"><span class="toc-num">24</span><a href="#limitations">Known Limitations</a></div>
+            <div class="toc-item"><span class="toc-num">25</span><a href="#glossary">Glossary</a></div>
+            <div class="toc-item"><span class="toc-num">26</span><a href="#file-map">File Map</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. OVERVIEW -->
+  <section id="overview" class="mb-5">
+    <h2 class="section-title">1. What the App Does</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Code: <code>C:\Daya\RAGchamp\SMALL-BIZ-ACCTG\Web-App</code>. Start it with <code>python app.py</code> and open <code>http://127.0.0.1:5050</code>. It needs Python 3.12 and the Claude Code CLI logged in (<code>C:\Users\dayam\.local\bin\claude.exe</code>). No API key is needed: Claude runs on your Claude Code plan.</p>
+        <p>The app is a bookkeeper's assistant built on three rules from the plan (<code>INFO\SMALL-BIZ-ACCTG-MVP1-PLAN.md</code>):</p>
+        <ul>
+          <li><strong>P1: Claude proposes, code disposes.</strong> Claude reads documents and suggests entries. Code checks every figure, every balance and every match before anything can be posted.</li>
+          <li><strong>P2: Nothing is posted without the owner.</strong> Every proposal waits on the <a href="#scr-review">Review</a> screen until you Accept it (or bulk-accept the safe ones).</li>
+          <li><strong>P3: Everything is traceable.</strong> Every ledger line links back to its document, its page image, the JSON Claude read from it, and the exact prompt and reply of every Claude call.</li>
+        </ul>
+        <p class="mb-0">The menu across the top has eleven screens. In order of the work they are: <strong>Setup</strong> (once), <strong>Inbox</strong> → <strong>Review</strong> → <strong>Ledger</strong> → <strong>Reconcile</strong> → <strong>Reports</strong> → <strong>Taxes</strong>, with <strong>Dashboard</strong> as the home page, <strong>Input docs</strong> to check any document and give feedback on it, <strong>Test data</strong> for synthetic practice data and <strong>Docs</strong>, the user's guide. The <strong>Ledger trail</strong> page is reached from the Ledger.</p>
+      </div>
+    </div>
+    <div class="card shadow-sm accent-yellow">
+      <div class="card-body">
+        <h5>The business the app assumes (MVP 1)</h5>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0 small">
+            <thead><tr><th>Topic</th><th>Setting</th></tr></thead>
+            <tbody>
+              <tr><td>Entity</td><td>Single-member LLC, disregarded: Schedule C + Schedule SE on the owner's 1040, CT-1040.</td></tr>
+              <tr><td>Books</td><td>Double entry, accrual basis, amounts kept as integer cents. Books start 2026-01-01.</td></tr>
+              <tr><td>Sales</td><td>Square POS (in-store, own delivery, delivery fees), plus DoorDash, Uber Eats and Grubhub.</td></tr>
+              <tr><td>Sales tax</td><td>CT 7.35% on meals (6.35% general). Platforms collect and remit tax on their own sales (marketplace facilitator).</td></tr>
+              <tr><td>Fixed assets</td><td>Items at or over $2,500 are capitalized (decision D9); smaller items are expensed.</td></tr>
+              <tr><td>Taxes</td><td>The app prepares <strong>draft worksheets</strong> for a CPA. Nothing is e-filed (decision D10).</td></tr>
+              <tr><td>Where</td><td><strong>Connecticut only</strong>: the business sells, collects sales tax and owes state income tax only in CT (Hartford), with no locations, registrations or employees in other states.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 2. LIVE VS SANDBOX -->
+  <section id="books" class="mb-5">
+    <h2 class="section-title">2. Live Books vs. Sandbox (the top-right switch)</h2>
+    <div class="card shadow-sm accent-orange mb-4">
+      <div class="card-body">
+        <p>The dropdown at the top right of every screen chooses <strong>which set of books is open</strong>. The app can hold several completely separate sets of books. Each one is a folder with its own database (<code>books.db</code>) and its own stored documents:</p>
+        <div class="mock mb-3">
+          <div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:var(--nav-blue)">
+            <img src="logo.svg" alt="RAG Champ" style="height:28px">
+            <span class="d-none d-sm-inline" style="color:var(--nav-yellow);font-style:italic;font-weight:600;letter-spacing:.15em;word-spacing:.5em;font-size:.75rem">SMALL BUSINESS ACCOUNTING AGENT</span>
+          </div>
+          <div class="mock-orange small"><b>Sandbox: jan-2026-scanned</b> - synthetic test data (replayed Claude answers). The real books are untouched. <u>Back to the live books</u></div>
+          <div class="mock-nav justify-content-center position-relative pe-5">
+            <span>Dashboard</span><span>Inbox</span><span class="on">Review</span><span>Input docs</span><span>Ledger</span><span>Reconcile</span><span>Reports</span><span>Taxes</span><span>Test data</span><span>Setup</span><span>Docs</span>
+            <span class="mock-select" style="margin-left:1rem">Sandbox: jan-2026-scanned ▾</span>
+          </div>
+        </div>
+        <p class="small">The layout of every screen is explained in <a href="#layout">The look of every page</a>.</p>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle small">
+            <thead><tr><th></th><th>Live books</th><th>Sandbox: &lt;name&gt;</th></tr></thead>
+            <tbody>
+              <tr><td><strong>What it is</strong></td><td>The real business's books.</td><td>A practice copy of the business filled with <strong>synthetic test data</strong> that the generator made (fake but realistic scanned documents).</td></tr>
+              <tr><td><strong>Folder</strong></td><td><code>Web-App\data\live\</code></td><td><code>Web-App\data\sandbox\&lt;name&gt;\</code> (also holds <code>answer_key.json</code>)</td></tr>
+              <tr><td><strong>What it accepts</strong></td><td>Only real documents. A file stamped <em>SYNTHETIC TEST DATA</em> is refused.</td><td>Only generated test files. A real document is refused, so real paperwork can never end up in a test.</td></tr>
+              <tr><td><strong>Claude</strong></td><td>Always <strong>live</strong>: real <code>claude -p</code> calls (uses your plan).</td><td><strong>replay</strong> (default, free): Claude's answers are taken from the answer key, or <strong>live</strong>: real calls on the fake documents, to test how well Claude actually reads them.</td></tr>
+              <tr><td><strong>How you know</strong></td><td>The books dropdown on the right of the menu says <em>Live books</em>; no orange bar.</td><td>An <strong>orange bar</strong> under the top bar of every page, and the dropdown says <em>Sandbox: &lt;name&gt;</em>. Reports also say <em>SANDBOX - synthetic data</em>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mb-0">Every screen (Dashboard, Inbox, Review, Ledger, Ledger trail, Reconcile, Reports, Taxes, Setup, Docs) works on <strong>whichever books are open</strong>; only <strong>Input docs</strong> reads live and sandbox documents side by side without switching. Switching does not copy or change anything: it just points the app at a different folder.</p>
+      </div>
+    </div>
+    <div class="card shadow-sm accent-red mb-4">
+      <div class="card-body">
+        <h5>Why it can feel confusing, and what to remember</h5>
+        <ul class="mb-0">
+          <li><strong>At the time of writing (2026-10-02) the app opens in the sandbox.</strong> <code>data\active.json</code> says <code>jan-2026-scanned</code>, a simulated January with 74 files / 74 documents, all booked (147 journal entries: 146 postings and one reversal made while trying the Ledger trail). The live books are empty (0 files, 0 entries). So the numbers you see on Dashboard and Reports are synthetic.</li>
+          <li><strong>The choice is app-wide, not per browser tab.</strong> It is saved in <code>data\active.json</code>. If you switch in one tab, other open tabs show the new books on their next reload.</li>
+          <li><strong>Switching always takes you to the Dashboard</strong> of the books you picked.</li>
+          <li><strong>The replay/live mode belongs to the sandbox</strong>, not to the dropdown. Change it on the <a href="#scr-testdata">Test data</a> screen (the small <em>replay / live</em> selector beside each sandbox). The orange bar tells you which is active.</li>
+          <li><strong>"Load the sandbox's generated files"</strong> (Inbox, only shown in a sandbox) <strong>empties that sandbox first</strong>, then reloads all its files from scratch. Use it to replay the month by hand; don't use it if you want to keep what you reviewed there.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card shadow-sm accent-green">
+      <div class="card-body">
+        <h5>Rule of thumb</h5>
+        <p class="mb-0">Use a <strong>sandbox</strong> to learn the screens and test the agent; nothing there can touch the real books. Switch to <strong>Live books</strong> only when you're entering the shop's real paperwork. To get back from a sandbox, use the dropdown or click <em>Back to the live books</em> in the orange bar.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 3. LAYOUT -->
+  <section id="layout" class="mb-5">
+    <h2 class="section-title">3. The Look of Every Page</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Every screen follows the same pattern (plan: <code>INFO\UI-REVAMP-PLAN.md</code>, spec <code>S-PAD\UI-design-specs.pdf</code>):</p>
+        <div class="mock mb-3">
+          <div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:var(--nav-blue)">
+            <img src="logo.svg" alt="RAG Champ" style="height:28px">
+            <span class="d-none d-sm-inline" style="color:var(--nav-yellow);font-style:italic;font-weight:600;letter-spacing:.15em;word-spacing:.5em;font-size:.75rem">SMALL BUSINESS ACCOUNTING AGENT</span>
+          </div>
+          <div class="mock-orange small text-center"><b>Sandbox: jan-2026-scanned</b> - synthetic test data … <u>Back to the live books</u></div>
+          <div class="mock-nav justify-content-center"><span class="on">Dashboard</span><span>Inbox</span><span>Review</span><span>…</span><span>Docs</span><span class="mock-select" style="margin-left:1rem">Live books ▾</span></div>
+          <div class="p-2">
+            <div class="p-2 rounded" style="background:#fff8dc;border:1px solid #f1e2a4">
+              <div class="d-flex justify-content-between"><b>Hartford Slice Pizza LLC</b><span><span class="badge text-bg-primary">Add documents</span> <span class="badge text-bg-light border">Review 0</span></span></div>
+              <div class="row g-1 mt-1 small">
+                <div class="col"><div class="bg-white border rounded p-1">To review<br><b>0</b></div></div>
+                <div class="col"><div class="bg-white border rounded p-1">Sales (net)<br><b>$62,847.30</b></div></div>
+                <div class="col"><div class="bg-white border rounded p-1">Net income<br><b>$22,204.29</b></div></div>
+                <div class="col"><div class="bg-white border rounded p-1">Bank (GL)<br><b>$62,705.06</b></div></div>
+              </div>
+            </div>
+            <table class="table table-sm table-bordered small mt-2 mb-0">
+              <thead><tr><th colspan="3" style="background:#e3eefc">Next tax dates</th></tr>
+                <tr><th style="background:#fff8dc">Date</th><th style="background:#fff8dc">What is due</th><th style="background:#fff8dc">Tax form</th></tr></thead>
+              <tbody><tr><td>2026-10-31</td><td>OS-114 sales tax for 2026-09</td><td>OS-114 <span class="text-muted">CT DRS</span></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <table class="table table-bordered small align-middle">
+          <thead><tr><th>Part</th><th>Look and behaviour</th></tr></thead>
+          <tbody>
+            <tr><td>Top bar</td><td>Navy, the <strong>RAG Champ</strong> logo on the left (it links to the Dashboard), <em>SMALL BUSINESS ACCOUNTING AGENT</em> in yellow italic on the right. It scrolls away.</td></tr>
+            <tr><td>Sandbox bar</td><td>Orange, centered text, only in a sandbox, between the top bar and the menu.</td></tr>
+            <tr><td>Menu</td><td>Links centered, the <strong>Live books / Sandbox</strong> dropdown on the right edge. It stays on screen when you scroll. On a phone it folds behind a ☰ button.</td></tr>
+            <tr><td>Overview box</td><td><strong>Light yellow</strong>: the page title and a one-line description, the page's main buttons on the right (filters too, on Review, Ledger, Reconcile, Reports, Input docs), and small <strong>tiles</strong> with the page's key figures (e.g. Inbox: files waiting, to propose, to review, Claude calls; Taxes: OS-114 due, books vs computed tax, Schedule C profit, SE tax; Setup: opening balances posted ✓/✗).</td></tr>
+            <tr><td>Cards and tables</td><td>Card titles in <strong>light blue</strong>; record tables <strong>striped</strong> with a hover highlight. Column-header rows are <strong>light yellow with column borders</strong> on the Dashboard's <em>Next tax dates</em>, the Ledger, Ledger trail, Reconcile and Reports tables and the OS-114 worksheet. Financial statements and debit/credit entry tables are not striped, so they read like printed statements.</td></tr>
+            <tr><td>Help boxes</td><td>Light-yellow notes inside a page, e.g. <em>Reversed an entry by mistake?</em> on the Ledger.</td></tr>
+            <tr><td>Dark mode</td><td>Follows the Windows setting; the yellow and blue have darker versions.</td></tr>
+            <tr><td>Print</td><td>The bars, menu, buttons and help boxes are left out.</td></tr>
+          </tbody>
+        </table>
+        <p class="mb-0 small">All colours live in <code>static\app.css</code> (tokens such as <code>--sba-overview-bg</code>, <code>--sba-head-bg</code>); the overview box and tiles are the Jinja macros <code>ui.overview</code> and <code>ui.tile</code> in <code>templates\_ui.html</code>. Restart is not needed after a style change: refresh with Ctrl+F5.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 4. CYCLE -->
+  <section id="cycle" class="mb-5">
+    <h2 class="section-title">4. The Whole Cycle at a Glance</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <div class="flow mb-3">
+          <div class="node human"><span class="who">you</span><b>1. Scan &amp; add</b>PDF / CSV to the Inbox</div><div class="arrow">→</div>
+          <div class="node code"><span class="who">code</span><b>2. Intake</b>hash, dedupe, page images</div><div class="arrow">→</div>
+          <div class="node claude"><span class="who">Claude</span><b>3. Extract</b>find documents, read them to JSON</div><div class="arrow">→</div>
+          <div class="node code"><span class="who">code</span><b>4. Check</b>arithmetic, gaps, [?]</div><div class="arrow">→</div>
+          <div class="node claude"><span class="who">Claude + code</span><b>5. Propose</b>entries, with match hints</div>
+        </div>
+        <div class="flow">
+          <div class="node human"><span class="who">you</span><b>6. Review</b>accept / edit / feedback / reject</div><div class="arrow">→</div>
+          <div class="node code"><span class="who">code</span><b>7. Post</b>General Ledger (append-only)</div><div class="arrow">→</div>
+          <div class="node human"><span class="who">you + code</span><b>8. Reconcile</b>statement vs GL, close month</div><div class="arrow">→</div>
+          <div class="node code"><span class="who">code</span><b>9. Reports</b>IS, BS, CF, equity, TB, GL</div><div class="arrow">→</div>
+          <div class="node code"><span class="who">code</span><b>10. Taxes</b>OS-114, Sch C/SE, CPA package</div>
+        </div>
+        <div class="code-window">
+          <div class="code-titlebar"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span><span class="code-filename">the pipeline, with the code behind each step</span></div>
+          <pre><code class="language-plaintext">Inbox screen    upload PDF/CSV  or  drop into SMALL-BIZ-ACCTG\Inbox\ and click ↻
+   |
+   |  ingest/intake.py      SHA-256 of the file -> refused if already added (any file name)
+   |                        synthetic-data guard (live books vs sandbox)
+   |                        stored as  data\&lt;books&gt;\documents\2026\&lt;sha16&gt;\original.pdf
+   |                        one PNG per page:  page-001.png ... (200 dpi for scans)
+   |
+   |  ingest/extract.py     PDF  -> Claude call "extract" (page images, or the PDF's text layer)
+   |                                 one call finds EVERY document in the file and transcribes it
+   |                        CSV  -> ingest/csv_import.py (Square / bank / card exports, no Claude)
+   |  ingest/checks.py      code checks each document's own arithmetic -> flags (error / warn / info)
+   |                        statement continuity: opening = last closing, no missing month
+   |
+   |  books/match.py        open items on clearing accounts -> MATCH HINTS
+   |  books/propose.py      Claude call "propose" (the Bookkeeper) -> journal entries JSON
+   |                        code checks: balanced, real accounts, ties to the document, hints obeyed
+   |                        (live mode: one automatic retry with the errors)
+   |
+Review screen   Accept / Edit / Feedback... (Claude call "revise") / Reject / Bulk accept
+   |  books/review.py       checks again against today's ledger, then posts
+   |  books/post.py         journal_entries + journal_lines   (never edited, only reversed)
+   |
+Reconcile       books/reconcile.py   statement closing balance vs GL (1010 bank, 2100 card), close month
+Reports         reports/statements.py   Income Statement, Balance Sheet, Cash Flow, Equity, TB, GL
+Taxes           tax/sales_tax_ct.py  tax/federal.py  tax/ct_income.py   + tax_rules\2026\*.yaml
+                /api/cpa-package -> zip for the CPA</code></pre>
+        </div>
+        <p class="mb-0">Long steps (extraction, the Bookkeeper, feedback, test data) run as <strong>background jobs</strong>. A small "Working…" card appears at the bottom right with a progress bar and a <em>cancel</em> link; the page reloads when the job finishes.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 5. STATUSES -->
+  <section id="statuses" class="mb-5">
+    <h2 class="section-title">5. File &amp; Document Statuses</h2>
+    <div class="card shadow-sm accent-yellow mb-4">
+      <div class="card-body">
+        <p>A <strong>file</strong> is what you upload (one PDF or CSV). A <strong>document</strong> is one receipt, statement, check, etc. found inside it. One scanned page with three receipts is <em>one file</em> and <em>three documents</em>.</p>
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <h6>File status (Inbox)</h6>
+            <table class="table table-bordered small mb-0">
+              <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><span class="badge text-bg-secondary">new</span></td><td>Stored, page images made, not extracted yet.</td></tr>
+                <tr><td><span class="badge text-bg-info">extracting</span></td><td>Claude (or the CSV importer) is reading it.</td></tr>
+                <tr><td><span class="badge text-bg-success">extracted</span></td><td>Its documents are in the list.</td></tr>
+                <tr><td><span class="badge text-bg-danger">failed</span></td><td>The error is shown under the file name. Click <em>Extract</em> or <em>Re-extract (higher dpi)</em>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-lg-7">
+            <h6>Document status (Inbox badge, Review, Dashboard)</h6>
+            <table class="table table-bordered small mb-0">
+              <thead><tr><th>Internal</th><th>Shown as</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>extracted</code></td><td>to propose</td><td>Read and checked; the Bookkeeper has not run yet.</td></tr>
+                <tr><td><code>proposed</code></td><td>to review</td><td>A proposal passed every code check and waits for you.</td></tr>
+                <tr><td><code>needs_review</code></td><td>needs attention</td><td>The proposal failed a code check (shown in red ✗). Edit it, give feedback, or fix the extraction.</td></tr>
+                <tr><td><code>posted</code></td><td>posted</td><td>Accepted; its entries are in the ledger.</td></tr>
+                <tr><td><code>support</code></td><td>linked (support)</td><td>Already booked from another document (e.g. the card statement booked it first). It is linked as evidence; nothing is posted twice.</td></tr>
+                <tr><td><code>rejected</code></td><td>rejected</td><td>You rejected it (with a reason), or it was a non-financial page or a VOID check.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 6. DASHBOARD -->
+  <section id="scr-dashboard" class="mb-5">
+    <h2 class="section-title">6. Screen: Dashboard</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>The home page (<code>/</code>) of the open books. It only shows things; it never changes the books.</p>
+        <table class="table table-bordered small align-middle">
+          <thead><tr><th>Part</th><th>What it shows</th></tr></thead>
+          <tbody>
+            <tr><td>Overview box (yellow)</td><td>Business name, address and books period; buttons <strong>Add documents</strong> (goes to Inbox) and <strong>Review N</strong> (the number of documents waiting); the four tiles below. Each tile links to its screen.</td></tr>
+            <tr><td>Four tiles</td><td><strong>To review</strong> (how many need attention, how many questions) · <strong>Sales</strong> for the latest month with sales, with <strong>food cost %</strong> (watch 25–35%) · <strong>Net income</strong> that month and year to date · <strong>Bank (GL)</strong> with cash on hand, card balance owed and sales tax owed.</td></tr>
+            <tr><td>Work to do</td><td>A striped list: files waiting or failed; documents to propose; proposals to review; proposals that need attention; questions from the Bookkeeper; rules suggested from your feedback; posted · linked · rejected counts. Each number links to the right screen or filter.</td></tr>
+            <tr><td>Unmatched items older than 45 days</td><td>Money sitting in a clearing account too long, e.g. a receipt paid by card whose card statement line never arrived (see <a href="#double">Section 20</a>).</td></tr>
+            <tr><td>Next tax dates</td><td>The next six dates from the tax calendar, in three columns with a yellow header row and column borders: <strong>Date</strong> · <strong>What is due</strong> · <strong>Tax form</strong> (the form, e.g. <em>OS-114</em>, <em>Form 1040-ES</em>, <em>CT-1040ES</em>, <em>Personal property declaration</em>, with who it is filed with underneath: CT DRS, IRS, CT). The form names come from the <code>form:</code> field of each date in <code>tax_rules\2026\federal.yaml</code> and <code>ct.yaml</code>.</td></tr>
+            <tr><td>Footer</td><td>Number of Claude calls and their cost at API rates (in replay mode, $0) and a <strong>Download a backup</strong> link (a zip of the whole books folder).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 7. INBOX -->
+  <section id="scr-inbox" class="mb-5">
+    <h2 class="section-title">7. Screen: Inbox (scans in, extraction)</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Where documents enter the books. The overview box shows <em>files waiting or failed</em>, <em>documents to propose</em>, <em>proposals to review</em> and <em>Claude calls</em> (with their cost), and holds the <strong>↻ Process the inbox</strong> and <strong>Run the Bookkeeper on documents still to propose</strong> buttons. Two ways in:</p>
+        <ul>
+          <li><strong>Upload scans or exports</strong>: choose one or more PDF / CSV files and click <strong>Add</strong>. Leave <em>run the Bookkeeper after extraction</em> ticked to go straight to proposals.</li>
+          <li><strong>Inbox folder</strong>: drop files into <code>C:\Daya\RAGchamp\SMALL-BIZ-ACCTG\Inbox\</code> and click <strong>↻ Process the inbox (N waiting)</strong>. Added files move to <code>Inbox\processed\</code>; refused ones go to <code>Inbox\refused\</code> with a <code>.txt</code> saying why.</li>
+        </ul>
+        <p>What happens to each file, in order:</p>
+        <ol>
+          <li><strong>Dedupe</strong>: the file's SHA-256 is compared with every file already in the books. The same scan is never added twice, even under a different name ("…was already added on 2026-01-05 as … (file #12)").</li>
+          <li><strong>Guard</strong>: synthetic files are refused in the live books, and real files are refused in a sandbox.</li>
+          <li><strong>Store &amp; render</strong>: the original is copied to <code>documents\2026\&lt;sha16&gt;\original.pdf</code> and each page becomes <code>page-001.png</code>, … (200 dpi for scans, 110 dpi for a downloaded text PDF, where the image is only for you to look at).</li>
+          <li><strong>Extract</strong> (background job): one Claude call per PDF finds <em>every</em> document in it and transcribes each one to JSON (<a href="#inspect">Section 18</a> shows a real example). CSV exports are parsed exactly by code with no Claude call.</li>
+          <li><strong>Check</strong>: code checks each document's arithmetic and adds flags.</li>
+          <li><strong>Propose</strong> (if ticked): the Bookkeeper runs on each new document, in upload order.</li>
+        </ol>
+        <h6 class="mt-3">The Files table</h6>
+        <table class="table table-bordered small align-middle mb-3">
+          <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>File</td><td>The file name: <strong>click it to open the original PDF</strong> in a new tab. Below it: PDF/CSV, <em>scanned</em> (no text layer), <em>synthetic</em>, when it was added, and any error.</td></tr>
+            <tr><td>Pages · Status</td><td>Page count; file status (<a href="#statuses">Section 5</a>).</td></tr>
+            <tr><td>Documents found</td><td>Every document Claude found in the file: type, party, date, total and its status. <strong>Click a document to open it on the Review screen.</strong></td></tr>
+            <tr><td>Claude</td><td>Number of Claude calls for this file, their cost and the seconds they took.</td></tr>
+            <tr><td>Buttons</td><td><strong>Extract</strong> runs extraction again. <strong>Re-extract (higher dpi)</strong> renders the pages at 300 dpi first, for faint or small print. CSV files show <strong>Import</strong>. Re-extracting is refused once a document of that file is booked: reverse its entries first.</td></tr>
+          </tbody>
+        </table>
+        <p class="mb-0">Above the table: <strong>Run the Bookkeeper on documents still to propose</strong> (for when you unticked the box, or a run was cancelled). In a sandbox there is also <strong>Load the sandbox's generated files</strong> (resets the sandbox, see <a href="#books">Section 2</a>).</p>
+      </div>
+    </div>
+    <div class="card shadow-sm accent-yellow">
+      <div class="card-body">
+        <h5>Document types Claude recognises</h5>
+        <p class="small mb-2">Each has a JSON schema in <code>Web-App\schemas\</code> that tells Claude which fields to fill.</p>
+        <div class="table-responsive">
+          <table class="table table-bordered small mb-0">
+            <thead><tr><th>doc_type</th><th>Shown as</th><th>Code checks after extraction</th></tr></thead>
+            <tbody>
+              <tr><td><code>purchase_receipt</code></td><td>Receipt</td><td>item lines = subtotal; subtotal + tax + tip = total; tax rate is 6.35% / 7.35%; taxable items with no tax (possible use tax); payment method shown</td></tr>
+              <tr><td><code>credit_card_statement</code>, <code>bank_statement</code></td><td>Card / Bank statement</td><td>opening + transactions = closing; transaction dates inside the period; opening = previous closing; no missing month</td></tr>
+              <tr><td><code>check</code></td><td>Check</td><td>amount in figures = amount in words; VOID → nothing to post</td></tr>
+              <tr><td><code>cash_log</code></td><td>Cash sheet</td><td>cash sales + tax = total written; tax is 7.35%; always "handwritten: confirm every figure"</td></tr>
+              <tr><td><code>pos_report</code></td><td>Square report</td><td>in-store + delivery + fees = gross; gross − discounts − comps − refunds = net; net + tax + tips = collected; card − fees = deposit</td></tr>
+              <tr><td><code>platform_statement</code></td><td>Platform statement</td><td>subtotal − commission − marketing − promotions + adjustments = payout</td></tr>
+              <tr><td><code>payroll_report</code></td><td>Payroll report</td><td>gross − withholding = net pay; gross + employer taxes = total debit</td></tr>
+              <tr><td><code>other</code> / <code>not_financial</code></td><td>Other / Not financial</td><td>"review closely" / rejected automatically</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small mt-2 mb-0">Any figure Claude could not read is written as <code>[?]</code> (it is told never to guess) and becomes a red <strong>error</strong> flag you must confirm before posting.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 8. REVIEW -->
+  <section id="scr-review" class="mb-5">
+    <h2 class="section-title">8. Screen: Review (proposals, accept / edit / feedback)</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>The screen where you spend most of your time. It has three columns:</p>
+        <div class="mock mb-3">
+          <div class="row g-0">
+            <div class="col-md-3 border-end p-2">
+              <b>Review queue (12)</b>
+              <div class="small text-muted">[All] [Questions] [Attention]</div>
+              <div class="badge text-bg-success my-1">Bulk accept 8 safe proposal(s)</div>
+              <div class="border rounded p-1 mb-1" style="background:#cfe2ff"><b>Receipt</b> <span class="float-end">$1,798.77</span><br>Sysco Connecticut 2026-01-01<br><span class="badge text-bg-success">high</span></div>
+              <div class="border rounded p-1 mb-1"><b>Card statement</b><br>Nutmeg Business Visa<br><span class="badge text-bg-danger">check</span> <span class="badge text-bg-warning">question</span></div>
+              <div class="small text-muted"><span class="callout-num">1</span> the queue</div>
+            </div>
+            <div class="col-md-5 border-end p-2">
+              <b>Receipt #1 - Sysco Connecticut</b><br><span class="text-primary">001-2026-01-01-purchase-receipt-sysco….pdf</span> · page(s) 1
+              <div class="border my-1 text-center text-muted" style="height:90px;line-height:90px;background:#fafafa">page image</div>
+              <div>▸ Extracted data and checks</div>
+              <div class="small text-muted"><span class="callout-num">2</span> the document</div>
+            </div>
+            <div class="col-md-4 p-2">
+              <b>Proposed entries</b> <span class="badge text-bg-success">high</span> <span class="text-muted">v1 · claude</span>
+              <div><b>Why:</b> …</div>
+              <table class="table table-sm tbl-mini mb-1"><tr><td>5010</td><td class="num">1,648.95</td><td></td></tr><tr><td>5030</td><td class="num">149.82</td><td></td></tr><tr><td>2150</td><td></td><td class="num">1,798.77</td></tr></table>
+              <span class="badge text-bg-success">Accept</span> <span class="badge text-bg-primary">Edit</span> <span class="badge text-bg-secondary">Feedback…</span> <span class="badge text-bg-danger">Reject</span>
+              <div class="small text-muted"><span class="callout-num">3</span> the proposal</div>
+            </div>
+          </div>
+        </div>
+        <h6><span class="callout-num">1</span> The queue (left)</h6>
+        <p>Every document still <em>to propose</em>, <em>to review</em> or <em>needing attention</em>, in the order the files were added. The filters <strong>All</strong>, <strong>Questions</strong> (the Bookkeeper asked you something), <strong>Attention</strong> (a failed check) and the <strong>Bulk accept</strong> button sit in the yellow overview box at the top, with four tiles: in the queue, with questions, need attention, safe to bulk accept. Badges: <span class="badge text-bg-secondary">to propose</span> <span class="badge text-bg-danger">check</span> <span class="badge text-bg-warning">question</span> <span class="badge text-bg-success">high</span> (high confidence, no errors). <strong>Bulk accept N safe proposal(s)</strong> accepts every proposal with high confidence, no failed checks and no questions.</p>
+        <h6><span class="callout-num">2</span> The document (middle)</h6>
+        <p>The document type, number and party; the <strong>file name links to the original PDF</strong>; the page numbers it sits on; its status. Then the <strong>page image(s)</strong> exactly as Claude saw them. Under the image, <strong>Extracted data and checks</strong> opens to show every flag and the full JSON Claude read. You can correct a figure in the JSON and click <strong>Save corrected figures and re-check</strong>. The checks run again and the old proposal is dropped, so run the Bookkeeper again. (A CSV document shows "imported exactly, without Claude" instead of an image.)</p>
+        <h6><span class="callout-num">3</span> The proposal (right)</h6>
+        <ul>
+          <li>Header: confidence (<span class="badge text-bg-success">high</span> / <span class="badge text-bg-warning">medium</span> / <span class="badge text-bg-danger">low</span>), version and source (<code>claude</code>, <code>replay</code>, <code>revised</code>, <code>manual</code>). <strong>Refresh ↻</strong> appears when entries were posted after this proposal was made (for receipts, statements and checks, a new posting can change the match hints).</li>
+          <li><strong>Why:</strong> Claude's one-sentence reason. <span class="text-success">⇄ match hints</span> in green, <span class="text-warning-emphasis">❓ questions</span> in yellow, <span class="text-danger">✗ failed code checks</span> in red.</li>
+          <li><strong>Support only</strong> (green box): the document was already booked from another one; accepting just links it.</li>
+          <li>The entries, each with debits, credits and "balanced".</li>
+          <li>If the extraction has a red error flag, tick <strong>I checked the flagged figures against the document</strong> before Accept will work.</li>
+        </ul>
+        <table class="table table-bordered small align-middle">
+          <thead><tr><th>Action</th><th>Key</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Accept</strong></td><td>A</td><td>Code checks the proposal again against the ledger <em>as it is now</em>, posts the entries, records the matches and moves to the next document.</td></tr>
+            <tr><td><strong>Edit</strong></td><td>E</td><td>The entries become editable (account, debit, credit, date, + line, ×). Accept then posts your version, after the same checks.</td></tr>
+            <tr><td><strong>Feedback…</strong></td><td>F</td><td>Write up to 400 characters ("The TV was personal", "Split: $40 was cleaning supplies", "Always book CVS to 6310"). Claude (the <em>Reviser</em>) makes a new version. If your feedback is a general instruction, a blue box asks <strong>Remember this rule?</strong>: <em>Yes, always</em> saves a vendor rule (Setup) that the Bookkeeper follows from then on.</td></tr>
+            <tr><td><strong>Reject</strong></td><td></td><td>Asks why (not business, duplicate, unreadable, prior year…). A rejected document can be <em>put back in the queue</em>.</td></tr>
+            <tr><td>Next / previous</td><td>J / K</td><td>Move through the queue.</td></tr>
+          </tbody>
+        </table>
+        <p class="mb-0">A blue note says when <strong>earlier documents are not reviewed yet</strong>. Review in order, so a receipt is booked before the card statement that pays it and the statement can recognise it. <strong>Proposal history</strong> at the bottom lists every version and your feedback.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 9. LEDGER -->
+  <section id="scr-ledger" class="mb-5">
+    <h2 class="section-title">9. Screen: Ledger</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>The <strong>General Ledger / Journal</strong>: every posted entry, newest first (up to 400). The overview box holds the filters and four tiles: entries in the period (and how many reversed), total debits, total credits and <em>debits = credits ✓</em>. The tables have yellow column headers and column borders.</p>
+        <ul>
+          <li><strong>Filters</strong>: a date range, an account, and a text search on memo / party. Choosing an account also shows that account's running ledger (opening, each line, balance, closing).</li>
+          <li><strong>Each entry</strong>: number, date, kind (<code>document</code>, <code>opening</code>, <code>manual</code>, <code>adjustment</code>, <code>reversal</code>), memo, its lines, and under <strong>Source</strong> a link to the document on the Review screen and an <strong>image</strong> link to the original PDF. From any ledger line you can get back to the paper it came from.</li>
+          <li><strong>Reverse</strong>: posted entries are never edited or deleted (the database refuses). To correct one, reverse it: a new entry with the debits and credits swapped (kind <em>reversal</em>, "of #N"; on the original date or one you give). The original is shown struck through. Then post the right entry, or put the document back through Review.</li>
+          <li><strong>Undo a reversal</strong>: reversal rows have a <strong>Reverse</strong> button too. Clicking it posts the original entry <em>again</em> as a new entry (same lines, kind, document and, by default, the original date), marked <em>undoes #reversal</em>; the reversal is then struck through as well and the books are back where they were. Links the original had (e.g. <em>settled by</em> a card statement line) carry over, so it does not turn into an open item. A reversal can be undone only once, and only in an open month. A <strong>light-yellow help box</strong> under <em>New manual journal entry</em> explains this on the page.</li>
+          <li><strong>Ledger trail →</strong>: the link next to <em>Entries (N)</em> opens the <a href="#scr-trail">Ledger trail</a>, every change ever made to the ledger.</li>
+          <li><strong>New manual journal entry</strong>: for things that have no document, such as the year-end inventory count or corrections. It shows a running balanced / not balanced check. The section also <strong>suggests the month's straight-line depreciation</strong> for capitalized assets, with a <strong>Post it</strong> button.</li>
+        </ul>
+        <p class="mb-0">Every posting is checked: the entry balances to the cent, every account exists and is active, the date is not before the books start, and the month is not closed.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 10. LEDGER TRAIL -->
+  <section id="scr-trail" class="mb-5">
+    <h2 class="section-title">10. Screen: Ledger Trail</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p><code>/ledger-trail</code>, opened from <strong>Ledger trail →</strong> next to <em>Entries</em> on the Ledger. It lets anyone review every change made to the ledger, newest first.</p>
+        <table class="table table-bordered small align-middle">
+          <thead><tr><th>Change</th><th>Badge</th><th>Recorded as coming from, e.g.</th></tr></thead>
+          <tbody>
+            <tr><td>An entry posted</td><td><span class="badge text-bg-success">Posted</span></td><td><em>Review: proposal accepted</em> / <em>edited entries accepted</em> / <em>bulk accept</em>, <em>Ledger: new manual journal entry</em>, <em>Ledger: suggested depreciation</em>, <em>Setup: opening balances</em>, <em>Test data: sandbox reset</em></td></tr>
+            <tr><td>An entry reversed</td><td><span class="badge text-bg-danger">Reversed</span></td><td><em>Ledger: Reverse button</em>, <em>Input docs: re-process (re-propose / re-extract / corrected figures)</em>; the row says which entry it undoes</td></tr>
+            <tr><td>A reversal undone</td><td><span class="badge text-bg-info">Reinstated</span></td><td><em>Ledger: Reverse button (undo a reversal)</em>; "undoes reversal #N"</td></tr>
+            <tr><td>A month closed / reopened</td><td><span class="badge text-bg-secondary">Month closed</span> <span class="badge text-bg-warning">Month reopened</span></td><td><em>Reconcile: Close month</em> (or <em>… with an override note</em>), <em>Reconcile: Reopen month</em>, with the reason given</td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li><strong>Each row</strong>: when it was changed, the change, the entry number (and the entry it undoes), the entry date, memo and reason, the amount, the lines (expand <em>N line(s)</em> for the debits and credits), the origin and the linked document.</li>
+          <li><strong>Overview</strong>: tiles for changes recorded, entries posted, entries reversed (and reversals undone), months closed / reopened; filters for the date of the change, the kind of change and text (memo, origin, account, entry or document number); <strong>CSV</strong> download.</li>
+          <li><strong>Storage</strong>: table <code>ledger_trail</code> in each set of books (<code>books\trail.py</code>). The row is written in the same transaction as the change, so trail and ledger always agree. Triggers make it <strong>append-only</strong>: the database refuses to edit or delete a trail row, like the journal itself.</li>
+          <li><strong>Older books</strong>: the first time a set of books is opened after the trail was added, it is <strong>back-filled</strong> once from the journal (each entry's posting time) and the closed months, marked <em>(back-filled) — recorded before the ledger trail existed</em>.</li>
+        </ul>
+        <p class="mb-0">The Setup screen's <em>Audit log</em> still records every action in the app; the Ledger trail is the focused, permanent record of what changed the books.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 11. RECONCILE -->
+  <section id="scr-reconcile" class="mb-5">
+    <h2 class="section-title">11. Screen: Reconcile &amp; Month Close</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Proves the books agree with the bank and the card company, one month at a time. The overview box holds the month buttons (🔒 = closed), the <strong>Close / Reopen</strong> button and tiles for the bank and card differences (✓ / ✗), the open items and the month's status. The two tables have yellow column headers and column borders.</p>
+        <ul>
+          <li><strong>Left</strong>: for <strong>1010 Business checking</strong> and <strong>2100 Business credit card</strong>, the <em>closing balance printed on that month's statement</em> vs the <em>GL balance at month end</em>, and the difference. ✓ = reconciled, ✗ = a difference, or "no activity". The statement links to its document.</li>
+          <li><strong>Right</strong>: <strong>open items</strong> on the clearing accounts: receipts waiting for their card line, Square sales waiting for the payout, platform payouts, undeposited checks and cash, payroll not yet debited.</li>
+          <li><strong>Close &lt;month&gt;</strong> (green) appears when both reconcile. After closing, nothing can be posted into that month. <strong>Close with an override note</strong> lets you close anyway with a written reason (audit-logged). <strong>Reopen</strong> also asks why.</li>
+        </ul>
+        <p class="mb-0">A difference usually means a statement line has no entry yet, a document is still in the Review queue, or the statement itself has not been added.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 12. REPORTS -->
+  <section id="scr-reports" class="mb-5">
+    <h2 class="section-title">12. Screen: Reports (financial statements)</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Six reports, each computed by <code>reports\statements.py</code> from the posted ledger at the moment you open it. <strong>Claude is never involved.</strong> The report buttons, dates and <strong>Show</strong> sit in the overview box; <strong>CSV</strong> downloads it, <strong>Print</strong> prints it without the menus. The default period is the books start to the end of the latest month with an entry. Each report has a yellow column-header row with column borders: <strong>Line | period</strong> (the Balance sheet: <em>As of</em> the end date; the Income statement with comparison adds <em>Prior year</em>); sections such as <em>Revenue</em> and <em>Cost of goods sold</em> are light-blue rows; totals are bold.</p>
+        <table class="table table-bordered small align-middle mb-3">
+          <thead><tr><th>Report</th><th>Contents</th><th>Self-check shown under it</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Income statement</strong></td><td>Revenue by account → gross sales → less discounts / comps / refunds → net sales → cost of goods sold (with COGS % and <strong>food &amp; beverage cost %</strong>) → gross profit → operating expenses → net income. Optional <em>vs prior year</em> column.</td><td></td></tr>
+            <tr><td><strong>Balance sheet</strong></td><td>Assets (current, fixed), liabilities, owner's equity including this year's net income.</td><td>✓ The balance sheet balances.</td></tr>
+            <tr><td><strong>Cash flow</strong></td><td>Indirect method: net income adjusted for non-cash items and working capital; investing; financing; opening balances; net change; cash at start and end.</td><td>✓ Ending cash equals the GL cash accounts (1000, 1010, 1020).</td></tr>
+            <tr><td><strong>Owner's equity</strong></td><td>Opening, opening balances, contributions, net income, draws, closing.</td><td></td></tr>
+            <tr><td><strong>Trial balance</strong></td><td>Every account's debit or credit balance at the end date.</td><td>✓ Debits equal credits.</td></tr>
+            <tr><td><strong>General ledger</strong></td><td>Every account with opening balance, each line (linked to its document) and running balance.</td><td></td></tr>
+          </tbody>
+        </table>
+        <p class="mb-0">The note at the bottom says it: <em>Computed from the posted General Ledger by code, never by Claude. Every line traces to its entries and source documents.</em></p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 13. TAXES -->
+  <section id="scr-taxes" class="mb-5">
+    <h2 class="section-title">13. Screen: Taxes</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Draft tax worksheets built from the ledger (marked <span class="badge text-bg-warning">DRAFT worksheets</span>). The tax rates and thresholds come from <code>Web-App\tax_rules\2026\*.yaml</code>, which are marked <em>not yet verified</em> until checked against the 2026 forms. Each account in the Chart of Accounts carries its <strong>Schedule C line</strong>, which is how ledger balances land on the form. The overview box shows tiles for the month's <strong>OS-114 amount due</strong>, <strong>books vs computed tax</strong>, <strong>Schedule C net profit</strong> and <strong>self-employment tax</strong>, with the <em>Download the CPA package</em> button.</p>
+        <p><strong>Connecticut only:</strong> the worksheets assume the business operates solely in Connecticut (sales, sales tax and state income tax only in CT, Hartford here). A business that also operates in other states needs those returns prepared separately with the CPA.</p>
+        <table class="table table-bordered small align-middle mb-3">
+          <thead><tr><th>Tab</th><th>What it builds</th></tr></thead>
+          <tbody>
+            <tr><td><strong>CT sales tax (OS-114)</strong></td><td>For a chosen month: gross receipts (all sales incl. own delivery fees and platform sales) → less marketplace-facilitator sales (the platforms remit that tax) → less discounts / comps / refunds → taxable receipts at 7.35% → tax due, plus <strong>use tax</strong> on untaxed purchases → total due. It compares that with the <strong>tax collected per the books</strong> (account 2200) and shows the difference, flags and open questions. The worksheet table has a yellow header row (<strong>Line | Amount | Source</strong>) and column borders. <em>Save this worksheet</em> stores a snapshot.</td></tr>
+            <tr><td><strong>Schedule C / SE</strong></td><td>Every Schedule C line with the accounts it came from; Part III (cost of goods sold, with inventory); Part V other expenses; Schedule SE (92.35% × profit, social security and Medicare parts, the deductible half); a 1040-ES estimate helper; <strong>questions before filing</strong>; and accounts with activity but no Schedule C line.</td></tr>
+            <tr><td><strong>Fixed assets (4562)</strong></td><td>The asset register (items at or over the $2,500 threshold), placed-in-service dates, cost, links to the receipts, book depreciation posted.</td></tr>
+            <tr><td><strong>1099-NEC</strong></td><td>Service payees paid by check or bank transfer (card payments excluded), the total, whether it is over the threshold, and a tick box to mark who needs a 1099.</td></tr>
+            <tr><td><strong>Connecticut</strong></td><td>The figures the CT-1040 needs from the business.</td></tr>
+            <tr><td><strong>Calendar</strong></td><td>Every tax and compliance date of the year (past ones greyed). Each date also carries its tax form (shown on the Dashboard's <em>Next tax dates</em>).</td></tr>
+          </tbody>
+        </table>
+        <p class="mb-0"><strong>Download the CPA package</strong> makes a zip for the accountant: <code>general_ledger.csv</code>, <code>trial_balance.csv</code>, <code>statements.json</code>, <code>schedule_c.json</code> (with SE), <code>os114_worksheets.json</code> (all 12 months), <code>fixed_assets_4562.json</code>, <code>form_1099_candidates.json</code>, <code>ct_figures.json</code>, <code>open_questions.txt</code> and a README (which says so if it came from a sandbox).</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 14. TEST DATA -->
+  <section id="scr-testdata" class="mb-5">
+    <h2 class="section-title">14. Screen: Test data &amp; Answer key</h2>
+    <div class="card shadow-sm accent-orange mb-4">
+      <div class="card-body">
+        <p>This screen makes the sandboxes that the top-right dropdown lists. It is for testing the agent, not for running the shop. Its overview tiles count the scenarios, simulation presets and sandboxes and show the last scorecard (PASS / FAIL).</p>
+        <ul>
+          <li><strong>Generate</strong> (left): pick a <strong>business simulation</strong> preset (a whole consistent period, e.g. <code>jan-2026-scanned</code>: a whole January, 74 files) or any of the <strong>57 scenarios</strong> (one feature each: a personal item on a receipt, a bounced check, a receipt arriving after its statement…). Options: <strong>Difficulty</strong> (<code>clean</code>, <code>scanned</code>, <code>messy</code>, <code>adversarial</code> = a digit really covered, <code>photo</code>), <strong>Seed</strong> (same seed → identical files), <strong>Claude</strong> replayed (free) or live (costs usage), and <strong>evaluate</strong> after generating.</li>
+          <li><strong>The generator writes the truth first</strong>: the real events (sales, purchases, payments), then every document those events would produce (thermal receipts, invoices, statements, Square reports, handwritten cash sheets and checks), then "scans" them with skew, blur, stains, creases. The <code>answer_key.json</code> records what Claude should read, the expected entries, and the expected reports, OS-114, Schedule C/SE and reconciliations.</li>
+          <li><strong>Sandboxes</strong> (right): <strong>Open</strong> (same as choosing it in the dropdown), <strong>Answer key</strong>, <strong>Evaluate</strong>, the <strong>replay / live</strong> mode selector, <strong>delete</strong>. The line under each name says how many files and documents it has and how many are booked.</li>
+          <li><strong>Scorecards</strong>: each evaluation runs the real pipeline and scores it: extraction field accuracy, <em>silently wrong</em> figures (must be 0), entries correct, <em>double-counted</em> money (must be 0), reports, reconciliation, tax, Claude time and cost. PASS / FAIL, with a full HTML scorecard.</li>
+          <li><strong>Feature coverage</strong> (top right): every feature and the scenarios that test it.</li>
+        </ul>
+        <p class="mb-0"><strong>Answer key</strong> page (<code>/test-data/sandbox/&lt;name&gt;</code>): the list of generated files, the selected file's page image, <strong>What Claude should read</strong> (the expected extraction JSON) and, per document, the expected owner action, expected flags and expected entries. Compare it with what the app actually extracted on the Review screen (<a href="#inspect">Section 18</a>).</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 15. SETUP -->
+  <section id="scr-setup" class="mb-5">
+    <h2 class="section-title">15. Screen: Setup</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>The overview box shows whether the <strong>opening balances</strong> are posted (✓ / ✗), the active accounts, the vendor rules and the sales tax filing frequency, with a <strong>Download a backup</strong> button.</p>
+        <ul class="mb-0">
+          <li><strong>Business profile</strong>: name, address, owner, EIN (kept here, <em>never sent to Claude</em>), CT tax registration, books start, tax year, capitalization threshold, POS, payroll provider, sales tax filing frequency, and the <strong>last 4 digits</strong> of the business card(s) and checking account. Claude is told these so it can tell a business card from a personal one. Also the delivery platforms.</li>
+          <li><strong>Opening balances</strong>: the balances on the books start date (bank, register cash, petty cash, inventory, equipment, accumulated depreciation, card owed, sales tax owed, loans). Posted as one <code>opening</code> entry balanced against <strong>3200 Opening balance equity</strong>. Do this <strong>first</strong> in the live books, or the bank reconciliation can never agree. To change them later, reverse the opening entry on the Ledger.</li>
+          <li><strong>Vendor rules</strong>: the owner's standing instructions (from <em>Remember this rule?</em> on Review, or typed here), e.g. <em>Restaurant Depot: book paper goods to 5030</em>. They are put into every Bookkeeper prompt for that vendor and override Claude's own judgment.</li>
+          <li><strong>Chart of Accounts</strong>: the pizza-shop accounts with type, Schedule C line and cash-flow class. Hover for the description. The description matters: <strong>Claude reads it</strong> to choose accounts. Add or update an account at the bottom; untick <em>Active</em> to stop it being used.</li>
+          <li><strong>Audit log</strong>: the latest 60 actions (files added, extractions, proposals, accepts with any confirmed flags, rejects, feedback, month closes and reopens, profile changes).</li>
+        </ul>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 16. INPUT DOCS -->
+  <section id="scr-inputdocs" class="mb-5">
+    <h2 class="section-title">16. Screen: Input docs (review input documents, feedback, re-process)</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Menu <strong>Input docs</strong> (<code>/doc-review</code>, page title <em>Review input documents</em>). It checks any number of documents at once: each scan next to what was read from it and <strong>where it landed</strong> in the ledger, the financial statements and the tax worksheets, with a feedback box under each. It reads the live books and every sandbox side by side and <strong>never changes which books are open</strong>. Plan: <code>INFO\DOC-REVIEW-REPROCESS-PLAN.md</code>.</p>
+        <div class="step-box">
+          <div class="step-bar">STEP 1 <span class="step-title">— Choose the books</span></div>
+          <div class="step-body"><p class="mb-0">Tick <strong>Live documents</strong>, <strong>Sandbox documents</strong>, or both. With Sandbox ticked, a dropdown narrows the list to one sandbox (default: all sandboxes). The table appears straight away.</p></div>
+        </div>
+        <div class="step-box">
+          <div class="step-bar">STEP 2 <span class="step-title">— Tick documents</span></div>
+          <div class="step-body"><p class="mb-0">One row per <strong>document</strong> (a scanned page with three receipts gives three rows): the books (sandbox names in orange), a title such as <em>Receipt — Sysco Connecticut — 2026-01-01 — $1,798.77</em>, type, date, total, status and file. Filter by text, type, status or month; the header check box selects every row shown. Click <strong>Review</strong> (top or bottom). Up to 30 documents are shown at a time.</p></div>
+        </div>
+        <div class="step-box">
+          <div class="step-bar">STEP 3 <span class="step-title">— One box per document</span></div>
+          <div class="step-body">
+            <p><strong>Left:</strong> the scanned page(s) (click to open the original PDF); a CSV export shows its rows. <strong>Right</strong>, four sections, all computed by code (<code>reports\tagging.py</code>), never by Claude:</p>
+            <ol class="mb-2">
+              <li><strong>Extracted data</strong>: the check flags, the fields as a readable table (unreadable <code>[?]</code> figures in red) and the raw JSON.</li>
+              <li><strong>Ledger tagging</strong>: each entry and line, debit or credit. For a clearing account (2150, 1100, 1110, 1050, 2300) it says what settled it (<em>settled by credit card statement #71 txn 1</em>), what it settles, or that it is still open. Reversed entries are struck through. A document not yet posted shows its open proposal, marked <em>proposed (not posted)</em>.</li>
+              <li><strong>Financial statements</strong>: per line, the statement › section › line it feeds (e.g. <em>Income statement › Cost of goods sold › COGS - Food purchases</em>), this document's amount, that line's total for the month (or the balance at month end), and its cash-flow line.</li>
+              <li><strong>Tax documents</strong>: the Schedule C line (COGS: <em>Part III line 36 → 42 → line 4</em>; meals at 50%), OS-114 lines (gross receipts, taxable receipts, marketplace deduction, discounts, tax collected per the books), the Form 4562 register, 1099-NEC candidates, and the change to Schedule C line 31 (and so Schedule SE). Balance-sheet-only lines say "No direct tax line".</li>
+            </ol>
+            <p class="mb-0">Links: <em>open in Review</em> when the document's books are open, otherwise <em>switch &amp; open in Review</em>.</p>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-bar">STEP 4 <span class="step-title">— Feedback, saved as a JSON file</span></div>
+          <div class="step-body">
+            <p>Tick what is wrong (figures read wrong, wrong account / debit-credit, wrong statement line, wrong tax treatment, not a business document, other) and/or write up to 1,000 characters, then <strong>Save feedback</strong>. A file is written <strong>first, always</strong>:</p>
+            <div class="code-window">
+              <div class="code-titlebar"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span><span class="code-filename">Web-App\feedback\001-2026-01-01-purchase-receipt-sysco-connecticut-20261002-143512.json</span></div>
+              <pre><code class="language-plaintext">schema_version, saved_at, books {name, kind, ai_mode}
+input_file      {filename, path (the stored original), source_path (sandbox input / Inbox\processed),
+                 sha256, pages, page_images}
+document        {id, part, doc_type, status, party, date, total}
+extracted_data  the extraction JSON as stored        flags
+proposal        latest version, confidence, reason, questions, match hints
+tagging         ledger entries + lines, each with its statement tags and tax tags (as you saw them)
+feedback        {categories, text, corrected_extraction, reprocess {action, higher_dpi, live_claude, together}}
+reprocess_result  filled in when the re-process job ends: reversed entries, re-queued documents,
+                  the new proposal, or the error</code></pre>
+            </div>
+            <p class="mb-0">The name is <code>&lt;input file name&gt;-&lt;YYYYMMDD-HHMMSS&gt;.json</code> (local time of the click; <code>-2</code> is added if two are saved in the same second). Earlier feedback on the same document is listed at the bottom of its box.</p>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-bar">STEP 5 <span class="step-title">— Re-process (optional)</span></div>
+          <div class="step-body">
+            <table class="table table-sm table-bordered bg-white small">
+              <thead><tr><th>Option</th><th>What runs</th></tr></thead>
+              <tbody>
+                <tr><td>Don't re-process (default)</td><td>Only the feedback file.</td></tr>
+                <tr><td>Re-propose using my feedback</td><td>Claude's reviser makes a new proposal from your words; the extracted data stays.</td></tr>
+                <tr><td>Re-extract (optionally 300 dpi)</td><td>Claude reads the whole file again, with your feedback as an owner note, then the Bookkeeper proposes. Every document of that file is redone, keeping their numbers.</td></tr>
+                <tr><td>I corrected the extracted figures</td><td>Edit the JSON in the box; the checks run again, then the Bookkeeper proposes.</td></tr>
+              </tbody>
+            </table>
+            <p>Before running, the box shows what will happen: which entries are reversed and which documents go back to the queue. The rules:</p>
+            <ul class="mb-0">
+              <li><strong>Nothing is posted.</strong> A posted document is <strong>un-posted by reversal</strong> (P6) and its matches removed; the new proposal waits on the <strong>Review</strong> screen to be accepted as usual.</li>
+              <li><strong>Documents booked against it block it</strong> (e.g. the card statement line that settled the receipt), unless you tick <strong>Re-process together</strong>: they are un-posted too and go back to <em>to propose</em>. Accept the re-processed document first, then run the Bookkeeper on them.</li>
+              <li><strong>A closed month blocks it</strong> until you reopen the month on Reconcile.</li>
+              <li><strong>Replay sandboxes</strong> would return the same stored answer, so <strong>Use live Claude for this</strong> is ticked by default: that one document is processed with real Claude calls (costs usage); the sandbox's own mode is unchanged.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 17. DOCS -->
+  <section id="scr-docs" class="mb-5">
+    <h2 class="section-title">17. Screen: Docs (the user's guide)</h2>
+    <div class="card shadow-sm accent-green mb-4">
+      <div class="card-body">
+        <p>Menu <strong>Docs</strong> (<code>/docs</code>): a user's guide inside the app, for the owner rather than the developer. Its title line reads <em>User's guide — how to keep the books of a small business - in our case - Hartford Slice Pizza LLC with this app …</em> (the name comes from Setup).</p>
+        <ul>
+          <li><strong>Overview tiles</strong> show where the open books stand: live or sandbox; <em>Step 1: business set up</em> ✓ / ✗ (card and bank last 4 digits and opening balances); documents added and waiting on Review; months closed.</li>
+          <li><strong>Contents</strong> on the left stays in view on wide screens; each step's heading links to its screen; <strong>Print</strong> gives a paper copy.</li>
+        </ul>
+        <table class="table table-bordered small align-middle mb-0">
+          <thead><tr><th>Part of the guide</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td>Before you start</td><td>Who does what (you approve, Claude proposes, code checks and computes); Live books vs Sandbox; starting the app.</td></tr>
+            <tr><td>1 Set up your business</td><td>Business profile, opening balances (first), chart of accounts, vendor rules.</td></tr>
+            <tr><td>2 Add your paperwork</td><td>What to add, upload vs the Inbox folder, what happens to each file, tips.</td></tr>
+            <tr><td>3 Review and post</td><td>Accept / Edit / Feedback / Reject with keys, Bulk accept, <code>[?]</code> figures, why to review in order.</td></tr>
+            <tr><td>4 Check any document</td><td>Input docs, feedback and re-processing.</td></tr>
+            <tr><td>5 The ledger</td><td>Reverse, undo a reversal, manual entries, depreciation, the Ledger trail.</td></tr>
+            <tr><td>6 Reconcile and close</td><td>Statement vs ledger, open items, close, override, reopen.</td></tr>
+            <tr><td>7 Financial statements</td><td>Each report and the question it answers; the self-checks.</td></tr>
+            <tr><td>8 Tax worksheets</td><td>The <strong>Connecticut only</strong> and <strong>drafts, not filings</strong> notes; OS-114, Schedule C/SE, 4562, 1099-NEC, Connecticut, Calendar; the CPA package.</td></tr>
+            <tr><td>Routine, practice, safety, FAQ, words</td><td>Weekly / monthly / year-end checklists; practising in a sandbox; backups and what Claude sees; common messages; plain-word glossary.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 18. INSPECT -->
+  <section id="inspect" class="mb-5">
+    <h2 class="section-title">18. Inspecting a Scanned Document &amp; What Was Extracted</h2>
+    <div class="card shadow-sm accent-green mb-4">
+      <div class="card-body">
+        <p>You can always see the paper, what Claude read from it, the checks, the proposal, and the raw prompt and reply. The example below is real: <strong>document #1</strong> in the <code>jan-2026-scanned</code> sandbox, a Sysco invoice (file <code>001-2026-01-01-purchase-receipt-sysco-connecticut.pdf</code>).</p>
+
+        <div class="alert alert-success small"><strong>Quickest way:</strong> the <a href="#scr-inputdocs">Input docs</a> screen shows the scan, the extracted data and the ledger, statement and tax tagging for many documents at once, with feedback and re-processing. The ways below remain useful for one document.</div>
+        <div class="step-box">
+          <div class="step-bar">WAY 1 <span class="step-title">— From the Inbox: open the original or the document</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>Inbox</mark><span class="arrow">→</span><mark>Files table</mark><span class="arrow">→</span><mark>file name / document link</mark></div>
+            <p class="mb-0">Click the <strong>file name</strong> to open the original PDF in a new tab (<code>/files/&lt;id&gt;/original</code>). The <strong>Documents found</strong> column lists what Claude found in that file. Click one to open it on the Review screen. This works for documents in <em>any</em> status, including posted and rejected ones that are no longer in the review queue.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">WAY 2 <span class="step-title">— On the Review screen: image + extracted JSON side by side</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>/review/&lt;document id&gt;</mark><span class="arrow">→</span><mark>page image</mark><span class="arrow">+</span><mark>▸ Extracted data and checks</mark></div>
+            <p>The middle column shows the page image Claude read (<code>/files/&lt;id&gt;/page/&lt;n&gt;.png</code>). Click <strong>Extracted data and checks</strong> to open the flags and the full JSON. Put them side by side and compare figure by figure:</p>
+            <div class="row g-3 align-items-start">
+              <div class="col-lg-6">
+                <img class="doc-shot" src="images/sample-sysco-receipt.jpg" alt="Scanned Sysco Connecticut invoice 240891, total $1,798.77 paid by VISA ending 4417">
+                <div class="small text-muted mt-1">page-001.png of the scanned invoice (reduced; note the scan specks and the SYNTHETIC TEST DATA footer)</div>
+              </div>
+              <div class="col-lg-6">
+                <div class="code-window mt-0">
+                  <div class="code-titlebar"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span><span class="code-filename">Extracted data (document #1)</span></div>
+                  <pre><code class="language-json">{
+ "doc_type": "purchase_receipt",
+ "confidence": "high",
+ "vendor": "Sysco Connecticut",
+ "date": "2026-01-01",
+ "invoice_no": "240891",
+ "lines": [
+  {"description": "FLOUR HI GLUTEN 50LB",  "qty": 1, "amount": "437.33", "taxable": false},
+  {"description": "TOMATO SAUCE 6/#10",    "qty": 1, "amount": "364.35", "taxable": false},
+  {"description": "SAUSAGE CRMBL 2/5LB",   "qty": 1, "amount": "345.11", "taxable": false},
+  {"description": "PRODUCE AND DAIRY",     "qty": 1, "amount": "502.16", "taxable": false},
+  {"description": "CUP PLASTIC 16OZ 1000CT","qty": 1, "amount": "140.87", "taxable": true}
+ ],
+ "subtotal": "1789.82",
+ "tax": "8.95",
+ "tip": null,
+ "total": "1798.77",
+ "payment": {"method": "card", "card_last4": "4417", "check_no": null},
+ "is_refund": false
+}</code></pre>
+                </div>
+                <p class="small mb-0"><strong>Checks:</strong> none failed. The five lines add to the 1,789.82 subtotal; 1,789.82 + 8.95 = 1,798.77; 8.95 is 6.35% of the one taxable line (140.87). Only the last 4 card digits are ever written down.</p>
+              </div>
+            </div>
+            <p class="mt-3 mb-0">If a figure is wrong, edit it in the JSON box and click <strong>Save corrected figures and re-check</strong>. The checks run again, the document goes back to <em>to propose</em>, and you run the Bookkeeper on the corrected figures. If many figures are off because the scan is faint, use <strong>Re-extract (higher dpi)</strong> on the Inbox instead.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">WAY 3 <span class="step-title">— See the proposal and why it looks the way it does</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>Review</mark><span class="arrow">→</span><mark>Proposed entries</mark></div>
+            <table class="table table-sm table-bordered bg-white small mb-2" style="max-width:520px">
+              <thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+              <tbody>
+                <tr><td>5010 COGS - Food purchases (4 food lines: 437.33 + 364.35 + 345.11 + 502.16)</td><td class="num">1,648.95</td><td></td></tr>
+                <tr><td>5030 COGS - Packaging &amp; paper goods (cups 140.87 + the 8.95 tax on them)</td><td class="num">149.82</td><td></td></tr>
+                <tr><td>2150 Purchases awaiting statement (paid by card)</td><td></td><td class="num">1,798.77</td></tr>
+              </tbody>
+            </table>
+            <p class="mb-0">The tax goes onto the largest <em>taxable</em> line, and a card purchase is credited to <strong>2150</strong>, not straight to the card account. When the January card statement arrives (dated early February), its line 1 gets the match hint <em>"receipt document #1 (Sysco Connecticut, 2026-01-01) is already booked to 2150: debit 2150 and credit 2100, no expense line"</em>. So the $1,798.77 is an expense exactly once (<a href="#double">Section 20</a>).</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">WAY 4 <span class="step-title">— From the Ledger or a Report back to the paper</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>Ledger</mark><span class="arrow">→</span><mark>Source: Receipt #1 · image</mark></div>
+            <p class="mb-0">Every ledger entry booked from a document has a <strong>Source</strong> link to its Review page and an <strong>image</strong> link to the original PDF. In <em>Reports → General ledger</em> each memo links to its document too, as do the asset register on the Taxes screen and the statements on Reconcile.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">WAY 5 <span class="step-title">— The exact prompt and reply of every Claude call (on disk)</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>data\&lt;books&gt;\documents\2026\&lt;sha16&gt;\calls\</mark></div>
+            <p>Every file's folder holds everything about it:</p>
+            <div class="code-window">
+              <div class="code-titlebar"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span><span class="code-filename">Web-App\data\sandbox\jan-2026-scanned\documents\2026\3d4ec15f457f2f8a\</span></div>
+              <pre><code class="language-plaintext">original.pdf                     the file as added
+page-001.png                     what Claude read and the Review screen shows
+calls\001-extract.prompt.txt     === SYSTEM === + === PROMPT === sent to Claude for extraction
+calls\001-extract.reply.txt      Claude's reply (the ```json block)
+calls\002-propose-doc1.prompt.txt   the Bookkeeper prompt: profile, chart of accounts, vendor rules,
+                                    similar past entries, MATCH HINTS, check flags, the document JSON
+calls\002-propose-doc1.reply.txt    the proposed entries
+calls\003-revise-doc1.*          (only if you gave feedback)</code></pre>
+            </div>
+            <p class="mb-0">The most recent prompt and reply of the whole app are also in <code>Web-App\claude-prompt-input.txt</code> and <code>Claude-prompt-output.txt</code>. Each call is recorded in the <code>ai_calls</code> table (time, cost, ok/error), which is what the Inbox <em>Claude</em> column and the Dashboard total show. In replay mode the prompt is still built and saved; only the reply comes from the answer key.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">WAY 6 <span class="step-title">— In a sandbox: compare with what Claude <em>should</em> have read</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>Test data</mark><span class="arrow">→</span><mark>Answer key</mark><span class="arrow">→</span><mark>pick the file</mark></div>
+            <p class="mb-0">The answer key page shows the generated file's image, <strong>What Claude should read</strong> (the true JSON) and the expected entries. With the sandbox in <strong>live</strong> mode, compare it with the Review screen's extracted JSON to judge Claude's reading; <strong>Evaluate</strong> does that comparison for every document and counts the <em>silently wrong</em> figures.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 19. WALKTHROUGH -->
+  <section id="walkthrough" class="mb-5">
+    <h2 class="section-title">19. Step-by-Step: One Receipt, Scan to Tax Line</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>Following the Sysco invoice from <a href="#inspect">Section 18</a> through every stage of the cycle.</p>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 1 <span class="step-title">— Added to the Inbox</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>POST /api/upload</mark><span class="arrow">→</span><mark>ingest/intake.py add_file()</mark></div>
+            <p class="mb-0">The PDF is hashed (SHA-256, first 16 characters <code>3d4ec15f457f2f8a</code> name its folder), checked for a duplicate and for the synthetic stamp, stored, and rendered to <code>page-001.png</code>. It has no text layer, so it is marked <em>scanned</em> and rendered at 200 dpi. File status <span class="badge text-bg-secondary">new</span>. A background job starts.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 2 <span class="step-title">— Claude extracts it</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>ingest/extract.py</mark><span class="arrow">→</span><mark>prompts/extract.txt + schemas/*.json</mark><span class="arrow">→</span><mark>ai.py</mark><span class="arrow">→</span><mark>claude -p --tools Read</mark></div>
+            <p class="mb-0">Claude is told it is a "meticulous data-entry clerk" that never categorizes, rounds or guesses. It gets the page image(s), the list of document types and their field schemas, and the rules (amounts as printed, <code>[?]</code> for unreadable characters, last 4 digits only, dates as YYYY-MM-DD). It replies <code>{"documents": [ … ]}</code>: here, one <code>purchase_receipt</code> on page 1. Code stores it as <strong>document #1</strong>, status <em>to propose</em>.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 3 <span class="step-title">— Code checks the arithmetic</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>ingest/checks.py _check_purchase_receipt()</mark></div>
+            <p class="mb-0">Lines vs subtotal, subtotal + tax + tip vs total, the tax rate, payment method. All pass, so there are no flags. Had the total been read as <code>17[?]8.77</code>, a red error flag would block posting until you confirm or correct it.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 4 <span class="step-title">— Match hints, then the Bookkeeper</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>books/match.py hints()</mark><span class="arrow">→</span><mark>books/propose.py</mark><span class="arrow">→</span><mark>prompts/bookkeeper*.txt</mark></div>
+            <p class="mb-0">No card statement line is waiting for this receipt yet, so there are no hints. The Bookkeeper prompt carries the business profile, the chart of accounts, vendor rules for "Sysco", similar accepted entries, the flags and the document JSON. Claude proposes 5010 / 5030 / 2150. Code checks that the entry balances, the accounts exist, the debits add to the receipt total of 1,798.77 and the month is open. It passes, so the status is <em>to review</em>, with high confidence.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 5 <span class="step-title">— You review and accept</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>Review</mark><span class="arrow">→</span><mark>Accept (A)</mark><span class="arrow">→</span><mark>books/review.py accept()</mark><span class="arrow">→</span><mark>books/post.py post_entry()</mark></div>
+            <p class="mb-0">The checks run once more against today's ledger, then the entry is posted (amounts as integer cents, lines append-only). Document status <em>posted</em>. The 2150 credit of 1,798.77 is now an <strong>open item</strong> on Reconcile.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 6 <span class="step-title">— The card statement settles it</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>card statement #71</mark><span class="arrow">→</span><mark>match hint on "txn 1"</mark></div>
+            <p class="mb-0">The January Nutmeg Business Visa statement (card ending 4417) lists SYSCO 1,798.77. <code>match.py</code> finds the open 2150 item (same amount, date within −3/+10 days, similar name) and tells the Bookkeeper to book <em>debit 2150 / credit 2100</em> with no expense line. The proposal check refuses anything else. 2150 clears to zero, and 2100 now shows what is owed to the card company.</p>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-bar">STEP 7 <span class="step-title">— Reconcile, reports, taxes</span></div>
+          <div class="step-body">
+            <div class="step-file"><mark>reconcile.py</mark><span class="arrow">→</span><mark>reports/statements.py</mark><span class="arrow">→</span><mark>tax/federal.py</mark></div>
+            <p class="mb-0">On Reconcile, the card statement's closing balance equals GL 2100. The $1,648.95 of food and $149.82 of packaging appear under <strong>Cost of goods sold</strong> on the Income Statement (and in the food cost %). Through the accounts' Schedule C lines they land in <strong>Part III, cost of goods sold</strong> on the Schedule C worksheet. The CPA package carries the line in <code>general_ledger.csv</code>, which links back to document #1.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 20. DOUBLE COUNTING -->
+  <section id="double" class="mb-5">
+    <h2 class="section-title">20. How Money Is Kept from Being Booked Twice</h2>
+    <div class="card shadow-sm accent-blue mb-4">
+      <div class="card-body">
+        <p>The same money usually appears on two pieces of paper: a receipt <em>and</em> a card statement line; a Square report <em>and</em> a bank deposit. If each were booked as an expense or a sale, everything would be counted twice. The app uses <strong>clearing accounts</strong>: the first document parks the amount there, and the second one clears it.</p>
+        <div class="table-responsive">
+          <table class="table table-bordered small align-middle">
+            <thead><tr><th>Clearing account</th><th>Booked by</th><th>Settled by</th></tr></thead>
+            <tbody>
+              <tr><td><strong>2150</strong> Purchases awaiting statement</td><td>a receipt / check paid by card, debit card or check</td><td>the card or bank statement line</td></tr>
+              <tr><td><strong>1100</strong> Card sales clearing</td><td>the Square report (card sales net of fees)</td><td>the Square payout deposit</td></tr>
+              <tr><td><strong>1110</strong> Platform receivable</td><td>the DoorDash / Uber Eats / Grubhub statement</td><td>the payout deposit</td></tr>
+              <tr><td><strong>1050</strong> Undeposited funds</td><td>a customer check, a cash drop</td><td>the bank deposit</td></tr>
+              <tr><td><strong>2300</strong> Payroll liabilities</td><td>the payroll provider report</td><td>the provider's bank debit</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mb-0"><code>books\match.py</code> looks for open items before every proposal and writes <strong>match hints</strong> into the Bookkeeper prompt. <code>books\propose.py</code> <strong>refuses a proposal that ignores a hint</strong>. If a receipt arrives <em>after</em> its statement line was already booked as an expense, the hint says "already booked: link it, post nothing", and the receipt becomes <em>support only</em>. Items still open after 45 days show on the Dashboard.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 21. CLAUDE VS CODE -->
+  <section id="claude-vs-code" class="mb-5">
+    <h2 class="section-title">21. Where Claude Is Used, Where Code Decides</h2>
+    <div class="card shadow-sm accent-yellow mb-4">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered small align-middle mb-0">
+            <thead><tr><th>Step</th><th>Claude?</th><th>Prompt</th><th>What code does around it</th></tr></thead>
+            <tbody>
+              <tr><td>Extract a PDF</td><td>Yes: call <code>extract</code></td><td><code>prompts\extract_system.txt</code>, <code>extract.txt</code>, <code>schemas\*.json</code></td><td>Parses the JSON, stores each document, runs the arithmetic and continuity checks.</td></tr>
+              <tr><td>Import a CSV export</td><td>No</td><td></td><td><code>ingest\csv_import.py</code> reads Square / bank / card exports exactly.</td></tr>
+              <tr><td>Propose entries</td><td>Yes: call <code>propose</code> (Bookkeeper)</td><td><code>bookkeeper_system.txt</code>, <code>bookkeeper.txt</code></td><td>Builds match hints first; checks balance, accounts, ties to the document, hints obeyed; one automatic retry with the errors (live mode).</td></tr>
+              <tr><td>Your feedback</td><td>Yes: call <code>revise</code> (Reviser)</td><td><code>reviser.txt</code></td><td>Same checks; stores the feedback and any suggested vendor rule.</td></tr>
+              <tr><td>Accept, post, reverse, undo a reversal, close</td><td>No</td><td></td><td>All posting rules, period locks, append-only ledger; each change also written to the Ledger trail.</td></tr>
+              <tr><td>Ledger / statement / tax tagging (Input docs)</td><td>No</td><td></td><td><code>reports\tagging.py</code> maps each line through the account settings and <code>tax_rules</code>.</td></tr>
+              <tr><td>Reconcile, reports, taxes, CPA package</td><td>No</td><td></td><td>Pure computation from the ledger and <code>tax_rules\2026\*.yaml</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small mt-2 mb-0">Calls go through <code>ai.py</code> → <code>claude_client.py</code> (copied from the Annual Report Analyzer): <code>claude -p</code> for text, <code>claude -p --tools Read</code> for page images, effort <code>low</code> by default (<code>SBA_CLAUDE_EFFORT</code>).</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 22. MONTH -->
+  <section id="month" class="mb-5">
+    <h2 class="section-title">22. A Month in the Live Books (owner's checklist)</h2>
+    <div class="card shadow-sm accent-green mb-4">
+      <div class="card-body">
+        <ol class="mb-0">
+          <li><strong>Once</strong>: switch the dropdown to <strong>Live books</strong>. On <strong>Setup</strong>, check the profile (card and bank last 4, sales tax frequency) and post the <strong>opening balances</strong> for 2026-01-01.</li>
+          <li><strong>During the month</strong>: scan receipts, invoices, checks, cash sheets; download the daily Square reports and the platform and payroll statements. Drop them in <code>SMALL-BIZ-ACCTG\Inbox\</code> and click <strong>↻</strong>, or upload them. Add them in roughly the order they happened.</li>
+          <li><strong>Review</strong> in order (J / K). <strong>Bulk accept</strong> the safe ones; open the <em>Attention</em> and <em>Questions</em> filters for the rest. Use <em>Feedback…</em> and say <em>Yes, always</em> to rules worth keeping.</li>
+          <li><strong>After month end</strong>: add the <strong>bank and card statements</strong> (PDF, or CSV export for exact figures). Their lines will meet the receipts already booked.</li>
+          <li><strong>Reconcile</strong> the month. Chase any difference (a missing document, an item still in the queue), then <strong>Close</strong> it.</li>
+          <li>On the <strong>Ledger</strong>, post the month's <strong>depreciation</strong> if there are fixed assets.</li>
+          <li><strong>Reports</strong>: look at the Income Statement (food cost %) and the Balance Sheet.</li>
+          <li><strong>Taxes</strong>: open the month's <strong>OS-114</strong> worksheet, compare tax due with tax collected, save the snapshot and file it with CT DRS yourself.</li>
+          <li><strong>Any time</strong>: check a document's journey on <strong>Input docs</strong>; review what changed on the <strong>Ledger trail</strong> (filter by date or <em>Reversed</em>).</li>
+          <li><strong>Year end</strong>: post the inventory count as a manual entry, review Schedule C / SE, the 1099 list and the questions, and <strong>download the CPA package</strong>. Download a <strong>backup</strong> from the Dashboard or Setup regularly. The <strong>Docs</strong> page has the same checklists in plain words.</li>
+        </ol>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 23. FIRST TEST -->
+  <section id="first-test" class="mb-5">
+    <h2 class="section-title">23. Your First Test Run in a Sandbox</h2>
+    <div class="card shadow-sm accent-orange mb-4">
+      <div class="card-body">
+        <p>The <code>jan-2026-scanned</code> sandbox is already fully booked, so the Review queue is empty there. To click through the whole cycle yourself:</p>
+        <ol>
+          <li>Choose <strong>Sandbox: jan-2026-scanned</strong> in the top-right dropdown (orange bar appears).</li>
+          <li><strong>Inbox → Load the sandbox's generated files</strong> → OK. The sandbox is emptied, its opening balances posted again, and all its files are added in order, extracted and proposed (replay mode: seconds, free).</li>
+          <li><strong>Inbox</strong>: click a few file names to see the scans, and the document links to see what was found in each file.</li>
+          <li><strong>Review</strong>: open documents, expand <em>Extracted data and checks</em>, compare with the image. Accept a few one by one, try Edit, Reject and put back. Then <strong>Bulk accept</strong>. (In replay mode, Feedback only works for documents the answer key has a revised answer for.)</li>
+          <li><strong>Ledger</strong> → follow a <em>Source</em> link back to its document. <strong>Reconcile</strong> January. Look at <strong>Reports</strong> and <strong>Taxes</strong>.</li>
+          <li><strong>Test data → Answer key</strong>: compare the expected entries and results with what you see.</li>
+          <li>To test real reading: set the sandbox to <strong>live</strong> on Test data and load again (a real Claude call per file and per document; costs usage), or <strong>Evaluate</strong> it for a scorecard.</li>
+          <li>Finish with <strong>Back to the live books</strong>.</li>
+        </ol>
+        <p class="mb-0 small">Command-line equivalents (from <code>Web-App</code>): <code>python -m testdata list</code>, <code>python -m testdata simulate jan-2026-scanned</code>, <code>python -m testdata evaluate jan-2026-scanned [--live]</code>, <code>python -m pytest -q</code>.</p>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 24. LIMITATIONS -->
+  <section id="limitations" class="mb-5">
+    <h2 class="section-title">24. Known Limitations</h2>
+    <div class="card shadow-sm accent-red mb-4">
+      <div class="card-body">
+        <ul class="mb-0">
+          <li>Tax worksheets are <strong>drafts</strong> for the CPA; nothing is e-filed. <code>tax_rules\2026\*.yaml</code> is <code>verified: false</code> until checked against the 2026 forms (especially the SS wage base and the 1099-NEC threshold). Open CT questions (marketplace sales on OS-114, delivery fee taxability) are listed on the worksheet.</li>
+          <li>Single-member LLC only (Schedule C / SE). Form 1065 and the S-corp path come later.</li>
+          <li><strong>Connecticut only</strong>: no other state's sales or income tax returns.</li>
+          <li>Ledger trail rows back-filled for books made before the trail existed carry the original posting time, but their origin is inferred from the entry's kind (marked <em>back-filled</em>).</li>
+          <li>Payroll is recorded from the provider's report, not processed.</li>
+          <li>Reports are accrual basis; the cash-basis view (decision D2) is not built yet.</li>
+          <li>A PDF of more than 12 pages must be split before extraction.</li>
+          <li>The open books (live or sandbox) are one app-wide setting, not per user or per browser tab.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 25. GLOSSARY -->
+  <section id="glossary" class="mb-5">
+    <h2 class="section-title">25. Glossary</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered glossary-table small mb-0">
+            <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>Books / business</td><td>One set of books: the live books or one sandbox. A folder with <code>books.db</code> and <code>documents\</code>.</td></tr>
+              <tr><td>Sandbox</td><td>Books filled with generated, synthetic test data and an answer key. It can never take real documents, and the live books can never take synthetic ones.</td></tr>
+              <tr><td>Replay / live (AI mode)</td><td>Replay: Claude's replies come from the answer key (free, repeatable). Live: real <code>claude -p</code> calls.</td></tr>
+              <tr><td>File / document</td><td>A file is one upload; a document is one receipt, statement, etc. inside it.</td></tr>
+              <tr><td>Extraction</td><td>The JSON transcription of a document: what Claude read.</td></tr>
+              <tr><td>Flag</td><td>A code check result on an extraction: error (must confirm), warn, info.</td></tr>
+              <tr><td>Bookkeeper / Reviser</td><td>The Claude steps that propose entries / revise them after your feedback.</td></tr>
+              <tr><td>Proposal</td><td>Suggested journal entries for one document, with confidence, reason, questions, match hints and check errors. It has versions.</td></tr>
+              <tr><td>Match hint</td><td>Code's instruction to the Bookkeeper that a line settles an open item already booked (or that the document is already booked).</td></tr>
+              <tr><td>Clearing account / open item</td><td>An account that holds money between two documents (2150, 1100, 1110, 1050, 2300); an unsettled amount in it.</td></tr>
+              <tr><td>Support only</td><td>A document already booked from another one: linked as evidence, nothing posted.</td></tr>
+              <tr><td>Vendor rule</td><td>A standing owner instruction for a vendor, given to the Bookkeeper on every matching document.</td></tr>
+              <tr><td>Reversal</td><td>The only way to correct a posted entry: a mirror-image entry.</td></tr>
+              <tr><td>Reinstate (undo a reversal)</td><td>Reverse on a reversal: the original entry is posted again as a new entry, marked "undoes #reversal".</td></tr>
+              <tr><td>Ledger trail</td><td>The append-only record of every change to the ledger: posted, reversed, reinstated, months closed and reopened, with when and from which screen.</td></tr>
+              <tr><td>Overview box / tile</td><td>The light-yellow box at the top of every screen with its title, main buttons and key figures (tiles).</td></tr>
+              <tr><td>Month close</td><td>Locks a month after reconciliation; nothing more can be posted into it.</td></tr>
+              <tr><td>OS-114</td><td>Connecticut Sales and Use Tax return.</td></tr>
+              <tr><td>Schedule C / SE</td><td>Federal profit-or-loss form for the business and the self-employment tax form.</td></tr>
+              <tr><td>CPA package</td><td>The zip of ledger, statements and worksheets for the accountant.</td></tr>
+              <tr><td>Answer key / scorecard</td><td>The truth a sandbox was generated from; the evaluation result comparing the app with it.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+  <!-- 26. FILE MAP -->
+  <section id="file-map" class="mb-5">
+    <h2 class="section-title">26. File Map</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered small mb-0">
+            <thead><tr><th>Path (under <code>Web-App\</code>)</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>app.py</code>, <code>config.py</code></td><td>Flask app on port 5050; settings (paths, Claude CLI, DPI, capitalization threshold, match windows).</td></tr>
+              <tr><td><code>web\pages.py</code>, <code>web\api.py</code>, <code>templates\</code>, <code>static\app.js</code></td><td>The screens and their actions; <code>base.html</code> has the top bar, the orange sandbox bar, the centered menu and the books dropdown.</td></tr>
+              <tr><td><code>static\app.css</code>, <code>static\logo.svg</code>, <code>templates\_ui.html</code></td><td>The look: colour tokens (light and dark), the RAG Champ logo, the <code>ui.overview</code> / <code>ui.tile</code> macros.</td></tr>
+              <tr><td><code>books\trail.py</code>, <code>templates\ledger_trail.html</code></td><td>The Ledger trail: recording, back-fill, filters; table <code>ledger_trail</code> in <code>books\schema.sql</code> (append-only triggers).</td></tr>
+              <tr><td><code>templates\docs.html</code></td><td>The Docs page (user's guide).</td></tr>
+              <tr><td><code>books\business.py</code></td><td>Live books vs sandboxes: folders, <code>data\active.json</code>, AI mode, reset / delete.</td></tr>
+              <tr><td><code>ai.py</code>, <code>claude_client.py</code></td><td>Every Claude call (live or replay); saves each prompt and reply in the document's <code>calls\</code> folder.</td></tr>
+              <tr><td><code>ingest\intake.py</code>, <code>pdf_utils.py</code></td><td>Upload / inbox, SHA-256 dedupe, synthetic guard, page images.</td></tr>
+              <tr><td><code>ingest\extract.py</code>, <code>checks.py</code>, <code>csv_import.py</code></td><td>Extraction, arithmetic and continuity checks, CSV exports.</td></tr>
+              <tr><td><code>prompts\*.txt</code>, <code>schemas\*.json</code></td><td>Extractor, Bookkeeper and Reviser prompts; document field schemas.</td></tr>
+              <tr><td><code>books\schema.sql</code>, <code>db.py</code>, <code>coa.py</code></td><td>Database (integer cents, append-only triggers); the pizza-shop Chart of Accounts.</td></tr>
+              <tr><td><code>books\match.py</code>, <code>propose.py</code>, <code>review.py</code>, <code>post.py</code>, <code>reconcile.py</code></td><td>Match hints; proposals and their checks; accept / edit / reject / rules; posting, reversal, locks; reconciliation and close.</td></tr>
+              <tr><td><code>reports\statements.py</code></td><td>TB, IS, BS, CF (indirect), equity, GL.</td></tr>
+              <tr><td><code>web\doc_review.py</code>, <code>templates\doc_review*.html</code>, <code>static\doc_review.js</code></td><td>The Input docs screen: list, boxes, feedback, re-process jobs.</td></tr>
+              <tr><td><code>reports\tagging.py</code>, <code>books\feedback_files.py</code></td><td>Ledger / statement / tax tagging of a document (code only); the feedback JSON files.</td></tr>
+              <tr><td><code>feedback\</code></td><td>One JSON file per piece of feedback (not in git).</td></tr>
+              <tr><td><code>tax\*.py</code>, <code>tax_rules\2026\*.yaml</code></td><td>OS-114, Schedule C/SE, 4562 figures, 1099 list, CT figures and calendar.</td></tr>
+              <tr><td><code>testdata\</code></td><td>Scenarios, generator, renderer, scan effects, simulator, evaluator and scorecards.</td></tr>
+              <tr><td><code>data\live\</code>, <code>data\sandbox\&lt;name&gt;\</code>, <code>data\active.json</code></td><td>The books themselves; which one is open.</td></tr>
+              <tr><td><code>..\Inbox\</code> (<code>processed\</code>, <code>refused\</code>)</td><td>The drop folder for the ↻ button.</td></tr>
+              <tr><td><code>logs\app.log</code>, <code>claude-prompt-input.txt</code>, <code>Claude-prompt-output.txt</code></td><td>App log; the latest Claude prompt and reply.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="back-to-top mt-2"><a href="#toc">↑ Back to Table of Contents</a></p>
+  </section>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">
+    Small Business Accounting Agent: how the web app (<code class="text-white">SMALL-BIZ-ACCTG\Web-App</code>) turns scanned paperwork into a checked General Ledger, financial statements and draft tax worksheets with Claude Code.
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/build/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>
