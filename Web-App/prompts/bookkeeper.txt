@@ -1,0 +1,38 @@
+BUSINESS PROFILE
+{{PROFILE}}
+
+CHART OF ACCOUNTS (number | name | type | use for)
+{{COA}}
+
+VENDOR RULES (the owner's instructions - follow them)
+{{RULES}}
+
+SIMILAR PAST ENTRIES (accepted by the owner)
+{{SIMILAR}}
+
+MATCH HINTS (from code - follow them)
+{{HINTS}}
+
+CHECK FLAGS ON THE EXTRACTION
+{{FLAGS}}
+
+THE DOCUMENT (document #{{DOC_ID}}, type {{DOC_TYPE}})
+```json
+{{DOCUMENT}}
+```
+{{EXTRA}}
+Propose the journal entries for this document following the rules for its type. Reply with exactly one ```json block and nothing else:
+```json
+{
+ "support_only": false,
+ "entries": [
+  {"ref": "document or txn N", "date": "YYYY-MM-DD", "memo": "short description",
+   "lines": [{"account": "5010", "debit": "84.98", "credit": "0.00", "memo": "", "party": "vendor or payee"},
+             {"account": "2150", "debit": "0.00", "credit": "84.98", "memo": "", "party": "vendor or payee"}]}
+ ],
+ "confidence": "high | medium | low",
+ "reason": "one sentence: why these accounts",
+ "questions": ["a question for the owner, only if needed"],
+ "rule_suggestion": null
+}
+```

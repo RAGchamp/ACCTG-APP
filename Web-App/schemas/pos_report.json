@@ -1,0 +1,21 @@
+{
+ "doc_type": "pos_report",
+ "provider": "Square",
+ "period_start": "2026-01-14",
+ "period_end": "2026-01-14",
+ "sales_instore": "1480.00",
+ "sales_delivery": "310.00",
+ "delivery_fees": "36.00",
+ "gross_sales": "1826.00",
+ "discounts": "42.00",
+ "comps": "18.00",
+ "refunds": "0.00",
+ "net_sales": "1766.00",
+ "tax": "129.80",
+ "tips": "96.50",
+ "total_collected": "1992.30",
+ "tender_card": "1540.30",
+ "tender_cash": "452.00",
+ "fees": "41.36",
+ "net_card_deposit": "1498.94"
+}

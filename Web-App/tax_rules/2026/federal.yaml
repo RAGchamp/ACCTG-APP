@@ -1,0 +1,68 @@
+# Federal rules for tax year 2026 (plan §10.1, §10.3). Single-member LLC -> Schedule C + Schedule SE.
+# VERIFY every value against the 2026 IRS forms and instructions before relying on a worksheet.
+version: "2026.1"
+verified: false            # set to true once a CPA or the owner has checked this file against the 2026 forms
+
+schedule_c:
+  lines:
+    "1":   "Gross receipts or sales"
+    "2":   "Returns and allowances"
+    "3":   "Subtract line 2 from line 1"
+    "4":   "Cost of goods sold (from line 42)"
+    "5":   "Gross profit"
+    "6":   "Other income"
+    "7":   "Gross income"
+    "8":   "Advertising"
+    "9":   "Car and truck expenses"
+    "10":  "Commissions and fees"
+    "11":  "Contract labor"
+    "13":  "Depreciation and section 179 expense deduction (see Form 4562)"
+    "15":  "Insurance (other than health)"
+    "16b": "Interest: Other"
+    "17":  "Legal and professional services"
+    "20b": "Rent or lease: Other business property"
+    "21":  "Repairs and maintenance"
+    "22":  "Supplies (not included in Part III)"
+    "23":  "Taxes and licenses"
+    "24b": "Deductible meals"
+    "25":  "Utilities"
+    "26":  "Wages (less employment credits)"
+    "27a": "Other expenses (from line 48)"
+    "28":  "Total expenses before expenses for business use of home"
+    "29":  "Tentative profit or (loss)"
+    "30":  "Expenses for business use of your home (Form 8829 / simplified method)"
+    "31":  "Net profit or (loss)"
+  meals_deductible_pct: 50
+  part_iii:
+    "35": "Inventory at beginning of year"
+    "36": "Purchases less cost of items withdrawn for personal use"
+    "37": "Cost of labor"
+    "38": "Materials and supplies"
+    "39": "Other costs"
+    "40": "Add lines 35 through 39"
+    "41": "Inventory at end of year"
+    "42": "Cost of goods sold"
+
+self_employment_tax:
+  net_earnings_factor: "0.9235"
+  social_security_rate: "12.4"
+  medicare_rate: "2.9"
+  social_security_wage_base: "184500.00"   # 2026 - VERIFY (SSA announcement)
+  minimum_net_earnings: "400.00"
+  deduction_share: "0.5"                   # half of SE tax is an adjustment to income
+
+de_minimis_safe_harbor_per_item: "2500.00"   # without an applicable financial statement
+form_1099_nec_threshold: "2000.00"           # payments made after 2025 - VERIFY (was 600.00)
+
+due_dates:
+  - {what: "Form 1040 with Schedule C / SE for 2026", date: "2027-04-15", form: "Form 1040, Schedule C, Schedule SE"}
+  - {what: "1040-ES estimated tax, 1st quarter 2026", date: "2026-04-15", form: "Form 1040-ES"}
+  - {what: "1040-ES estimated tax, 2nd quarter 2026", date: "2026-06-15", form: "Form 1040-ES"}
+  - {what: "1040-ES estimated tax, 3rd quarter 2026", date: "2026-09-15", form: "Form 1040-ES"}
+  - {what: "1040-ES estimated tax, 4th quarter 2026", date: "2027-01-15", form: "Form 1040-ES"}
+  - {what: "Forms 1099-NEC to contractors and the IRS", date: "2027-02-01", form: "Form 1099-NEC"}
+
+notes:
+  - "The worksheets are drafts built from the books; review with a CPA before filing (plan P7, D10)."
+  - "Book depreciation (6600) is not tax depreciation: section 179 / bonus depreciation choices are made on Form 4562."
+  - "The qualified business income (QBI) deduction is claimed on the owner's Form 1040, not on Schedule C."

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Setup{% endblock %}
+{% block content %}
+{% call(part) ui.overview('Setup', profile.name ~ ' · books start ' ~ profile.books_start ~ ' · tax year ' ~ profile.tax_year ~ ' · single-member LLC') %}
+  {% if part == 'actions' %}
+    <a class="btn btn-outline-secondary bg-body" href="/api/backup">Download a backup</a>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Opening balances', '✓ posted' if opening_posted else '✗ not posted', 'on ' ~ profile.books_start, None, 'good' if opening_posted else 'bad') }}
+      {{ ui.tile('Active accounts', accounts|selectattr('active')|list|length, 'of ' ~ accounts|length ~ ' in the chart') }}
+      {{ ui.tile('Vendor rules', rules|length, 'followed by the Bookkeeper') }}
+      {{ ui.tile('Sales tax filing', profile.sales_tax_frequency, 'CT OS-114') }}
+    </div>
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-header">Business profile (decisions D1-D10)</div><div class="card-body">
+      <form id="prof" class="row g-2 small">
+        {% for k, label in [('name','Business name'),('address','Address'),('owner_name','Owner'),('ein','EIN (entered here, never sent to Claude)'),('ct_tax_registration','CT tax registration number'),('books_start','Books start (YYYY-MM-DD)'),('tax_year','Tax year'),('capitalization_threshold','Capitalization threshold per item ($)'),('pos','POS system'),('payroll_provider','Payroll provider')] %}
+        <div class="col-md-6"><label class="form-label mb-0">{{ label }}</label><input class="form-control form-control-sm" name="{{ k }}" value="{{ profile[k] }}"></div>{% endfor %}
+        <div class="col-md-6"><label class="form-label mb-0">Sales tax filing frequency</label><select class="form-select form-select-sm" name="sales_tax_frequency">
+          {% for f in ['monthly','quarterly','annual'] %}<option {{ 'selected' if profile.sales_tax_frequency == f }}>{{ f }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label class="form-label mb-0">Business card last 4 (comma-separated)</label><input class="form-control form-control-sm" name="card_last4" value="{{ profile.card_last4|join(', ') }}"></div>
+        <div class="col-md-6"><label class="form-label mb-0">Business checking last 4</label><input class="form-control form-control-sm" name="bank_last4" value="{{ profile.bank_last4|join(', ') }}"></div>
+        <div class="col-md-6"><label class="form-label mb-0">Delivery platforms</label><input class="form-control form-control-sm" name="platforms" value="{{ profile.platforms|join(', ') }}"></div>
+        <div class="col-12 text-body-secondary">Entity: single-member LLC, disregarded (Schedule C / SE, CT-1040) · accrual books · own delivery fee taxable · a CPA reviews the returns.</div>
+        <div class="col-12"><button class="btn btn-sm btn-primary" type="submit">Save profile</button></div>
+      </form></div></div>
+
+    <div class="card mb-3"><div class="card-header">Opening balances ({{ profile.books_start }})</div><div class="card-body small">
+      {% if opening_posted %}<p class="text-success mb-1">Opening balances are posted. To change them, reverse the opening entry on the Ledger screen and enter them again.</p>{% endif %}
+      <form id="open" class="row g-2">
+        {% for n, label in [('1010','Business checking'),('1000','Cash in the register'),('1020','Petty cash'),('1200','Inventory'),('1500','Kitchen equipment (cost)'),('1510','Furniture & fixtures (cost)'),('1520','Vehicles (cost)'),('1590','Accumulated depreciation'),('2100','Credit card balance owed'),('2200','Sales tax owed'),('2500','Loans payable')] %}
+        <div class="col-md-6"><label class="form-label mb-0">{{ n }} {{ label }}</label><input class="form-control form-control-sm num" name="{{ n }}" placeholder="0.00"></div>{% endfor %}
+        <div class="col-12"><button class="btn btn-sm btn-primary" type="submit" {{ 'disabled' if opening_posted }}>Post opening balances</button>
+          <span class="text-body-secondary">balanced against 3200 Opening balance equity</span></div>
+      </form></div></div>
+
+    <div class="card mb-3"><div class="card-header">Vendor rules (from your feedback)</div><div class="card-body small">
+      <table class="table table-sm table-striped table-hover">{% for r in rules %}<tr><td>{{ r.vendor }}</td><td>{{ r.rule_text }}</td><td>{{ r.account or '' }}</td>
+        <td><button class="btn btn-sm btn-link text-danger" onclick="run('/api/rules/{{ r.id }}/delete', {})">delete</button></td></tr>
+        {% else %}<tr><td class="text-body-secondary">No rules yet. They come from "Remember this rule?" on the Review screen, or add one here.</td></tr>{% endfor %}</table>
+      <form id="rule" class="row g-2"><div class="col-md-3"><input class="form-control form-control-sm" name="vendor" placeholder="vendor"></div>
+        <div class="col-md-6"><input class="form-control form-control-sm" name="rule" placeholder="instruction, e.g. book paper goods to 5030"></div>
+        <div class="col-md-2"><input class="form-control form-control-sm" name="account" placeholder="account"></div>
+        <div class="col-md-1"><button class="btn btn-sm btn-primary">Add</button></div></form>
+    </div></div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-header">Chart of Accounts</div><div class="card-body small">
+      <div style="max-height: 480px; overflow:auto"><table class="table table-sm table-striped table-hover">
+        <thead class="sticky-top"><tr><th>No.</th><th>Name</th><th>Type</th><th>Sch C</th><th>Cash flow</th><th>Active</th></tr></thead>
+        {% for a in accounts %}<tr class="{{ 'text-body-secondary' if not a.active }}" title="{{ a.description }}"><td>{{ a.number }}</td><td>{{ a.name }}</td><td>{{ a.type }}</td>
+          <td>{{ a.tax_line or '' }}</td><td>{{ a.cash_flow_class or '' }}</td>
+          <td><input type="checkbox" {{ 'checked' if a.active }} onchange="run('/api/setup/accounts/{{ a.number }}/active', {active: this.checked}, null, false)"></td></tr>{% endfor %}
+      </table></div>
+      <form id="acct" class="row g-2 mt-1">
+        <div class="col-md-2"><input class="form-control form-control-sm" name="number" placeholder="6330"></div>
+        <div class="col-md-4"><input class="form-control form-control-sm" name="name" placeholder="name"></div>
+        <div class="col-md-3"><select class="form-select form-select-sm" name="type">{% for t in ['expense','cogs','revenue','asset','liability','equity'] %}<option>{{ t }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" name="tax_line" placeholder="Sch C line"></div>
+        <div class="col-md-9"><input class="form-control form-control-sm" name="description" placeholder="use for ... (Claude reads this)"></div>
+        <div class="col-md-3"><button class="btn btn-sm btn-primary w-100">Add / update</button></div>
+      </form>
+    </div></div>
+    <div class="card"><div class="card-header">Audit log (latest)</div><div class="list-group list-group-flush small sba-list" style="max-height: 360px; overflow:auto">
+      {% for a in audit %}<div class="list-group-item py-1"><span class="text-body-secondary">{{ a.at }}</span> {{ a.action }} <span class="mono">{{ a.detail }}</span></div>{% endfor %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+const formObj = f => Object.fromEntries(new FormData(f).entries());
+document.getElementById('prof').onsubmit = e => { e.preventDefault(); run('/api/setup/profile', formObj(e.target), 'Profile saved'); };
+document.getElementById('open').onsubmit = e => { e.preventDefault(); run('/api/setup/opening', { balances: formObj(e.target) }, 'Opening balances posted'); };
+document.getElementById('rule').onsubmit = e => { e.preventDefault(); run('/api/rules', formObj(e.target), 'Rule added'); };
+document.getElementById('acct').onsubmit = e => { e.preventDefault(); run('/api/setup/accounts', formObj(e.target), 'Account saved'); };
+</script>{% endblock %}

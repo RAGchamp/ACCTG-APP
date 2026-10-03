@@ -1,0 +1,23 @@
+{
+ "doc_type": "bank_statement",
+ "bank": "Charter Oak Community Bank",
+ "account_last4": "0931",
+ "period_start": "2026-01-01",
+ "period_end": "2026-01-31",
+ "opening_balance": "18250.00",
+ "closing_balance": "20114.73",
+ "transactions": [
+  {
+   "date": "2026-01-15",
+   "description": "SQUARE INC DES:SQ260114 PAYOUT",
+   "amount": "1412.27",
+   "check_no": null
+  },
+  {
+   "date": "2026-01-16",
+   "description": "CHECK 1043",
+   "amount": "-2800.00",
+   "check_no": "1043"
+  }
+ ]
+}

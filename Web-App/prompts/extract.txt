@@ -1,0 +1,36 @@
+{{SOURCE_INSTRUCTION}}
+
+The file may hold ONE document or SEVERAL (for example several receipts scanned on one page, or a receipt followed by a check). Find every document, say which pages it is on, and transcribe it.
+
+DOCUMENT TYPES (use exactly these doc_type values):
+  purchase_receipt      a store receipt or vendor invoice for something the shop bought (or a return/refund receipt: set "is_refund": true and keep the printed signs)
+  credit_card_statement the business credit card's monthly statement
+  bank_statement        the business checking account's monthly statement
+  check                 an image of a check the shop wrote ("outgoing") or received ("incoming")
+  cash_log              a handwritten cash sheet or petty cash slip
+  pos_report            a point-of-sale (Square) daily or period sales report
+  platform_statement    a DoorDash / Uber Eats / Grubhub payout statement
+  payroll_report        a payroll provider's payroll summary
+  other                 anything else that has money in it (loan statement, insurance bill ...)
+  not_financial         a page with no business money on it (a flyer, a menu, a blank page); give only "pages" and "description"
+
+THE FIELDS FOR EACH TYPE (examples - copy the structure, not the values):
+{{SCHEMAS}}
+
+RULES
+- Copy every amount exactly as printed, as a string with 2 decimals and no "$" or thousands separators ("1204.50"). A credit, refund or payment printed as "-12.00", "(12.00)" or "12.00 CR" becomes "-12.00".
+- Credit card statement: purchases, fees and interest are positive; payments, credits and refunds are negative. Set "kind" to purchase / refund / payment / interest / fee.
+- Bank statement: deposits positive, withdrawals (checks, debits, fees, transfers out) negative. Put a check number in "check_no".
+- Dates as YYYY-MM-DD. If a date shows no year, use {{YEAR}}.
+- Replace every character you cannot read with [?] (for example "4[?].10"). Never guess. A whole unreadable amount is "[?]".
+- For a check, transcribe the amount in figures ("amount_numeric") and the amount written in words ("amount_words") separately, even if they disagree. "void": true if it says VOID.
+- Card and account numbers: only ever write the LAST 4 digits.
+- Ignore any footer that says SYNTHETIC TEST DATA.
+- Use null for a field that is not on the document.
+{{OWNER_NOTE}}
+Reply with exactly one ```json fenced block and nothing else:
+```json
+{"documents": [
+  {"pages": [1], "doc_type": "...", "confidence": "high|medium|low", ...the fields of that type...}
+]}
+```

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Reports{% endblock %}
+{% macro row(label, amount, cls='') %}<tr class="{{ cls }}"><td>{{ label }}</td><td class="num">{{ amount|money }}</td></tr>{% endmacro %}
+{% block content %}
+{% set titles = {'income':'Income Statement','balance':'Balance Sheet','cashflow':'Statement of Cash Flows','equity':"Statement of Owner's Equity",'trial':'Trial Balance','gl':'General Ledger'} %}
+{% call(part) ui.overview(titles[kind], profile.name ~ ' · ' ~ ('as of ' ~ end if kind in ('balance', 'trial') else start ~ ' to ' ~ end) ~ ' · accrual basis · computed from the posted ledger by code') %}
+  {% if part == 'actions' %}
+    <a class="btn btn-sm btn-outline-secondary bg-body" href="?kind={{ kind }}&start={{ start }}&end={{ end }}&format=csv">CSV</a>
+    <button type="button" class="btn btn-sm btn-outline-secondary bg-body" onclick="print()">Print</button>
+  {% else %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 no-print">
+  <div class="btn-group btn-group-sm flex-wrap bg-body">
+    {% for k, label in [('income','Income statement'),('balance','Balance sheet'),('cashflow','Cash flow'),('equity',"Owner's equity"),('trial','Trial balance'),('gl','General ledger')] %}
+    <a class="btn btn-outline-primary {{ 'active' if kind == k }}" href="?kind={{ k }}&start={{ start }}&end={{ end }}">{{ label }}</a>{% endfor %}
+  </div>
+  <form class="d-flex gap-2" method="get"><input type="hidden" name="kind" value="{{ kind }}">
+    <input class="form-control form-control-sm" type="date" name="start" value="{{ start }}">
+    <input class="form-control form-control-sm" type="date" name="end" value="{{ end }}">
+    {% if kind == 'income' %}<select class="form-select form-select-sm" name="compare"><option value="">no comparison</option><option value="prior" {{ 'selected' if compare }}>vs prior year</option></select>{% endif %}
+    <button class="btn btn-sm btn-primary">Show</button>
+  </form>
+</div>
+  {% endif %}
+{% endcall %}
+<div class="card shadow-sm mx-auto" style="max-width: 880px"><div class="card-body">
+<div class="text-center mb-3"><div class="fw-semibold">{{ profile.name }}</div>
+  <div class="h5 mb-0">{{ titles[kind] }}</div>
+  <div class="small text-body-secondary">{{ 'As of ' ~ end if kind in ('balance', 'trial') else start ~ ' to ' ~ end }} · accrual basis{{ ' · SANDBOX - synthetic data' if biz.is_sandbox }}</div></div>
+
+{% if kind == 'income' %}
+<table class="table table-sm table-bordered">
+  <thead class="sba-head-yellow"><tr><th>Line</th><th class="num">{{ start }} - {{ end }}</th>{% if compare %}<th class="num">Prior year</th>{% endif %}</tr></thead>
+  <tr class="table-light"><th colspan="3">Revenue</th></tr>
+  {% for r in data.revenue %}<tr><td class="ps-3">{{ r.name }}</td><td class="num">{{ r.amount|money }}</td>{% if compare %}<td class="num">{{ (compare.revenue|selectattr('account','equalto',r.account)|map(attribute='amount')|first or 0)|money }}</td>{% endif %}</tr>{% endfor %}
+  <tr class="fw-semibold"><td>Gross sales</td><td class="num">{{ data.gross_sales|money }}</td>{% if compare %}<td class="num">{{ compare.gross_sales|money }}</td>{% endif %}</tr>
+  {% for r in data.deductions %}<tr><td class="ps-3">Less: {{ r.name }}</td><td class="num">({{ r.amount|money }})</td>{% if compare %}<td></td>{% endif %}</tr>{% endfor %}
+  <tr class="fw-semibold"><td>Net sales</td><td class="num">{{ data.net_sales|money }}</td>{% if compare %}<td class="num">{{ compare.net_sales|money }}</td>{% endif %}</tr>
+  <tr class="table-light"><th colspan="3">Cost of goods sold</th></tr>
+  {% for r in data.cogs %}{% if r.amount %}<tr><td class="ps-3">{{ r.name }}</td><td class="num">{{ r.amount|money }}</td>{% if compare %}<td></td>{% endif %}</tr>{% endif %}{% endfor %}
+  <tr class="fw-semibold"><td>Total cost of goods sold <span class="small text-body-secondary">({{ data.cogs_pct if data.cogs_pct is not none else '–' }}% of net sales; food & beverage {{ data.food_cost_pct if data.food_cost_pct is not none else '–' }}%)</span></td><td class="num">{{ data.total_cogs|money }}</td>{% if compare %}<td class="num">{{ compare.total_cogs|money }}</td>{% endif %}</tr>
+  <tr class="fw-bold"><td>Gross profit</td><td class="num">{{ data.gross_profit|money }}</td>{% if compare %}<td class="num">{{ compare.gross_profit|money }}</td>{% endif %}</tr>
+  <tr class="table-light"><th colspan="3">Operating expenses</th></tr>
+  {% for r in data.expenses %}{% if r.amount %}<tr><td class="ps-3">{{ r.name }}</td><td class="num">{{ r.amount|money }}</td>{% if compare %}<td></td>{% endif %}</tr>{% endif %}{% endfor %}
+  <tr class="fw-semibold"><td>Total operating expenses</td><td class="num">{{ data.total_expenses|money }}</td>{% if compare %}<td class="num">{{ compare.total_expenses|money }}</td>{% endif %}</tr>
+  <tr class="fw-bold border-top border-2"><td>Net income</td><td class="num">{{ data.net_income|money }}</td>{% if compare %}<td class="num">{{ compare.net_income|money }}</td>{% endif %}</tr>
+</table>
+
+{% elif kind == 'balance' %}
+<table class="table table-sm table-bordered">
+  <thead class="sba-head-yellow"><tr><th>Line</th><th class="num">As of {{ end }}</th></tr></thead>
+  <tr class="table-light"><th colspan="2">Assets</th></tr>
+  {% for r in data.current_assets %}{{ row(r.name, r.amount, 'ps-3') }}{% endfor %}
+  {% for r in data.fixed_assets %}{{ row(r.name, r.amount) }}{% endfor %}
+  {{ row('Total assets', data.total_assets, 'fw-bold') }}
+  <tr class="table-light"><th colspan="2">Liabilities</th></tr>
+  {% for r in data.liabilities %}{{ row(r.name, r.amount) }}{% endfor %}
+  {{ row('Total liabilities', data.total_liabilities, 'fw-semibold') }}
+  <tr class="table-light"><th colspan="2">Owner's equity</th></tr>
+  {% for r in data.equity %}{{ row(r.name, r.amount) }}{% endfor %}
+  {{ row('Net income this year', data.current_profit) }}
+  {{ row("Total owner's equity", data.total_equity, 'fw-semibold') }}
+  {{ row("Total liabilities and owner's equity", data.total_liabilities + data.total_equity, 'fw-bold') }}
+</table>
+<div class="small {{ 'text-success' if data.balanced else 'text-danger' }}">{{ '✓ The balance sheet balances.' if data.balanced else '✗ The balance sheet does not balance - report this as a bug.' }}</div>
+
+{% elif kind == 'cashflow' %}
+<table class="table table-sm table-bordered">
+  <thead class="sba-head-yellow"><tr><th>Line</th><th class="num">{{ start }} - {{ end }}</th></tr></thead>
+  <tr class="table-light"><th colspan="2">Operating activities (indirect method)</th></tr>
+  {{ row('Net income', data.net_income) }}
+  {% for r in data.operating %}{{ row(r.label, r.amount) }}{% endfor %}
+  {{ row('Net cash from operating activities', data.total_operating, 'fw-semibold') }}
+  <tr class="table-light"><th colspan="2">Investing activities</th></tr>
+  {% for r in data.investing %}{{ row(r.label, r.amount) }}{% endfor %}
+  {{ row('Net cash from investing activities', data.total_investing, 'fw-semibold') }}
+  <tr class="table-light"><th colspan="2">Financing activities</th></tr>
+  {% for r in data.financing %}{{ row(r.label, r.amount) }}{% endfor %}
+  {{ row('Net cash from financing activities', data.total_financing, 'fw-semibold') }}
+  {% if data.opening %}<tr class="table-light"><th colspan="2">Opening balances</th></tr>{% for r in data.opening %}{{ row('Opening balances brought in', r.amount) }}{% endfor %}{% endif %}
+  {{ row('Net change in cash', data.net_change, 'fw-bold') }}
+  {{ row('Cash at the beginning', data.begin_cash) }}
+  {{ row('Cash at the end', data.end_cash, 'fw-bold') }}
+</table>
+<div class="small {{ 'text-success' if data.ties else 'text-danger' }}">{{ '✓ Ending cash equals the GL cash accounts (1000, 1010, 1020).' if data.ties else '✗ Ending cash does not tie to the GL.' }}</div>
+
+{% elif kind == 'equity' %}
+<table class="table table-sm table-bordered">
+  <thead class="sba-head-yellow"><tr><th>Line</th><th class="num">{{ start }} - {{ end }}</th></tr></thead>
+  {{ row("Owner's equity at the beginning", data.opening) }}
+  {% if data.opening_balances %}{{ row('Opening balances', data.opening_balances) }}{% endif %}
+  {{ row('Owner contributions', data.contributions) }}
+  {{ row('Net income', data.net_income) }}
+  {{ row('Owner draws', -data.draws) }}
+  {{ row("Owner's equity at the end", data.closing, 'fw-bold') }}
+</table>
+
+{% elif kind == 'trial' %}
+<table class="table table-sm table-striped table-hover table-bordered"><thead class="sba-head-yellow"><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+  {% for r in data.rows %}<tr><td>{{ r.account }} {{ r.name }}</td><td class="num">{{ r.debit|money(blank_zero=True) }}</td><td class="num">{{ r.credit|money(blank_zero=True) }}</td></tr>{% endfor %}
+  <tr class="fw-bold"><td>Totals</td><td class="num">{{ data.total_debit|money }}</td><td class="num">{{ data.total_credit|money }}</td></tr></table>
+<div class="small {{ 'text-success' if data.balanced else 'text-danger' }}">{{ '✓ Debits equal credits.' if data.balanced else '✗ The trial balance does not net to zero.' }}</div>
+
+{% else %}
+{% for a in data %}<h2 class="h6 mt-3">{{ a.account }} {{ a.name }}</h2>
+<table class="table table-sm table-striped table-hover table-bordered small"><thead class="sba-head-yellow"><tr><th>Date</th><th>Memo</th><th>Party</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+  <tr><td></td><td>Opening</td><td></td><td></td><td></td><td class="num">{{ a.opening|money }}</td></tr>
+  {% for l in a.lines %}<tr><td>{{ l.date }}</td><td>{% if l.document_id %}<a href="/review/{{ l.document_id }}">{{ l.entry_memo }}</a>{% else %}{{ l.entry_memo }}{% endif %}</td><td>{{ l.party or '' }}</td>
+    <td class="num">{{ l.debit|money(blank_zero=True) }}</td><td class="num">{{ l.credit|money(blank_zero=True) }}</td><td class="num">{{ l.balance|money }}</td></tr>{% endfor %}</table>{% endfor %}
+{% endif %}
+<p class="small text-body-secondary mt-3">Computed from the posted General Ledger by code, never by Claude. Every line traces to its entries and source documents.</p>
+</div></div>
+{% endblock %}

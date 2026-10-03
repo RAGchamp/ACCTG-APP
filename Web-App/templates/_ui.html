@@ -1,0 +1,35 @@
+{#- Building blocks shared by every screen (INFO\UI-REVAMP-PLAN.md §1.3).
+
+  The light-yellow overview box (spec S3). Use it as a call block; the caller is asked for
+  two parts: "actions" (buttons, top right) and "body" (tiles, filters ...):
+
+    {% call(part) ui.overview("Inbox", subtitle) %}
+      {% if part == 'actions' %}<a class="btn btn-primary" ...>...</a>
+      {% else %}<div class="row g-2 row-cols-2 row-cols-md-4">{{ ui.tile(...) }}</div>{% endif %}
+    {% endcall %}
+-#}
+{% macro overview(title, subtitle=None, badge=None, inline=False) -%}
+<section class="sba-overview" aria-label="Overview">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div class="sba-head">
+      {% if inline and subtitle %}
+      <h1 class="sba-title">{{ title }}{% if badge %} {{ badge }}{% endif %}<span class="sba-sub-inline"> — {{ subtitle }}</span></h1>
+      {% else %}
+      <h1 class="sba-title">{{ title }}{% if badge %} {{ badge }}{% endif %}</h1>
+      {% if subtitle %}<div class="sba-sub">{{ subtitle }}</div>{% endif %}
+      {% endif %}
+    </div>
+    {% if caller %}<div class="d-flex flex-wrap gap-2 align-items-center no-print">{{ caller('actions') }}</div>{% endif %}
+  </div>
+  {% if caller %}<div class="sba-body">{{ caller('body') }}</div>{% endif %}
+</section>
+{%- endmacro %}
+
+{#- A figure tile inside the overview box (the Dashboard's four tiles). -#}
+{% macro tile(label, value, note=None, href=None, cls='') -%}
+<div class="col"><div class="tile">
+  <div class="t">{{ label }}</div>
+  <div class="v {{ cls }}">{% if href %}<a class="stretched-link text-reset text-decoration-none" href="{{ href }}">{{ value }}</a>{% else %}{{ value }}{% endif %}</div>
+  {% if note %}<div class="t">{{ note }}</div>{% endif %}
+</div></div>
+{%- endmacro %}

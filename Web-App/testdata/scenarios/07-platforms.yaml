@@ -1,0 +1,18 @@
+# Delivery platforms (plan §15.4)
+- id: platform-doordash
+  title: A weekly DoorDash statement - commission, promotions, an error charge; marketplace tax not booked
+  area: Delivery platforms
+  events:
+    - {type: platform_week, platform: DoorDash, start: 2026-01-05, end: 2026-01-11, subtotal: 2140.00, promotions: 35.00, adjustments: "-12.50"}
+
+- id: platform-ubereats
+  title: A weekly Uber Eats statement with marketing fees
+  area: Delivery platforms
+  events:
+    - {type: platform_week, platform: Uber Eats, start: 2026-01-05, end: 2026-01-11, subtotal: 1385.00, marketing_fees: 40.00}
+
+- id: platform-grubhub-adjustment
+  title: A Grubhub statement with a positive adjustment (a prior-week credit netted into the payout)
+  area: Delivery platforms
+  events:
+    - {type: platform_week, platform: Grubhub, start: 2026-01-05, end: 2026-01-11, subtotal: 910.00, adjustments: "22.40"}

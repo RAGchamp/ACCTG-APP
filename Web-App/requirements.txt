@@ -1,0 +1,8 @@
+flask
+pymupdf
+markdown
+pyyaml
+pillow
+numpy
+# dev / tests
+pytest

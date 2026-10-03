@@ -1,0 +1,17 @@
+{
+ "doc_type": "other",
+ "description": "Loan statement / insurance bill / anything else",
+ "party": "CT Community SBA Lender",
+ "date": "2026-01-10",
+ "amount": "1000.00",
+ "details": [
+  {
+   "label": "principal",
+   "amount": "812.40"
+  },
+  {
+   "label": "interest",
+   "amount": "187.60"
+  }
+ ]
+}

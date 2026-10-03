@@ -1,0 +1,41 @@
+# Period and year-end (plan §15.4)
+- id: period-opening-balances
+  title: Opening balances on 2026-01-01 with equipment, a loan and accumulated depreciation
+  area: Period and year-end
+  opening: {bank: "18250.00", cash: "300.00", petty: "200.00", equipment: "45000.00", vehicle: "12000.00", accumulated_depreciation: "15500.00", loan: "30000.00", card: "640.00", inventory: "2400.00"}
+  events:
+    - {type: bank, kind: card_payment, date: 2026-01-10, amount: "640.00"}
+
+- id: period-close-month
+  title: January reconciles and is closed; a late January receipt needs the month reopened
+  area: Period and year-end
+  close_months: [{month: 2026-01, after: 2026-02-04}]
+  events:
+    - {type: purchase, date: 2026-01-20, vendor: Restaurant Depot, payment: card, items: [{desc: MOZZ 6LB, amount: 25.49, account: "5010"}]}
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}
+    - {type: purchase, date: 2026-01-28, vendor: Stop & Shop, payment: cash, receipt: {available: 2026-02-12},
+       propose_errors_expected: ["closed"],
+       owner: [{action: reopen, month: 2026-01, note: late receipt found in the van}, {action: accept}, {action: close, month: 2026-01}],
+       items: [{desc: ROMAINE HEARTS 3PK, amount: 5.99, account: "5010"}]}
+
+- id: period-depreciation-inventory
+  title: Monthly depreciation and a year-end inventory count (manual entries)
+  area: Period and year-end
+  opening: {bank: "15000.00", equipment: "42000.00"}
+  events:
+    - {type: purchase, date: 2026-01-12, vendor: Restaurant Depot, payment: cash, items: [{desc: FLOUR 50LB X4, amount: 88.00, account: "5010"}]}
+    - {type: manual, date: 2026-01-31, memo: "Straight-line depreciation 2026-01", lines: [["6600", "500.00", 0], ["1590", 0, "500.00"]]}
+    - {type: manual, date: 2026-01-31, memo: "Inventory count 2026-01-31", lines: [["1200", "1850.00", 0], ["5010", 0, "1850.00"]]}
+
+- id: period-reversal
+  title: An accepted entry found wrong -> reversed and re-posted correctly (the ledger stays append-only)
+  area: Period and year-end
+  events:
+    - type: purchase
+      date: 2026-01-15
+      vendor: Home Depot
+      payment: cash
+      items: [{desc: SHELVING UNIT, amount: 189.00, account: "6300", taxable: true}]
+      posted_correction:
+        memo: "Shelving is smallwares, not a repair"
+        lines: [["6320", "201.00", 0], ["1000", 0, "201.00"]]

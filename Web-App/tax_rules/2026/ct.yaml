@@ -1,0 +1,20 @@
+# Connecticut income tax and compliance, 2026 (plan §10.4). VERIFY each year.
+version: "2026.1"
+verified: false
+entity: "Single-member LLC (disregarded): the Schedule C profit flows into the owner's federal AGI and CT-1040."
+returns:
+  - {form: "CT-1040", what: "Connecticut resident income tax return (includes the Schedule C profit through federal AGI)"}
+  - {form: "CT-1040ES", what: "Connecticut estimated income tax payments"}
+pass_through_entity_tax: "Elective for tax years beginning on or after 2024-01-01; applies to multi-member LLCs / S corps (CT-1065/CT-1120SI) - not used by a single-member LLC. VERIFY."
+calendar:
+  - {what: "OS-114 sales tax return and payment (monthly)", date: "last day of the following month", form: "OS-114"}
+  - {what: "CT LLC annual report to the Secretary of the State (fee about $80 - VERIFY)", date: "2026-03-31", form: "LLC annual report"}
+  - {what: "CT-1040ES estimated tax, 1st instalment", date: "2026-04-15", form: "CT-1040ES"}
+  - {what: "CT-1040ES estimated tax, 2nd instalment", date: "2026-06-15", form: "CT-1040ES"}
+  - {what: "CT-1040ES estimated tax, 3rd instalment", date: "2026-09-15", form: "CT-1040ES"}
+  - {what: "CT-1040ES estimated tax, 4th instalment", date: "2027-01-15", form: "CT-1040ES"}
+  - {what: "Hartford business personal property declaration (Oct 1 grand list) to the Hartford assessor", date: "2026-11-01", form: "Personal property declaration"}
+  - {what: "CT-1040 for 2026", date: "2027-04-15", form: "CT-1040"}
+  - {what: "Sales tax permit renewal (every 2 years - VERIFY)", date: "check myconneCT", form: "Sales tax permit"}
+notes:
+  - "Payroll withholding (CT-941) is filed by the payroll provider (decision D5)."

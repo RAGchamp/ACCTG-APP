@@ -1,0 +1,39 @@
+# Taxes (plan §15.4)
+- id: tax-os114-month
+  title: A monthly OS-114 whose tax ties to 2200 (Square + cash sales + own delivery fees + platform sales deducted)
+  area: Taxes
+  events:
+    - {type: square_day, date: 2026-01-05, instore: 1210.00, delivery: 180.00, delivery_fees: 18.00, discounts: 30.00, tips: 60.00, cash: 310.00}
+    - {type: square_day, date: 2026-01-06, instore: 990.00, delivery: 150.00, delivery_fees: 15.00, comps: 12.00, tips: 48.00, cash: 260.00}
+    - {type: cash_log, date: 2026-01-06, cash_sales: "40.00"}
+    - {type: platform_week, platform: DoorDash, start: 2026-01-05, end: 2026-01-11, subtotal: 1200.00}
+
+- id: tax-register-wrong-rate
+  title: The register charged 6.35% instead of 7.35% -> POS flag and an OS-114 difference
+  area: Taxes
+  events:
+    - {type: square_day, date: 2026-01-08, instore: 1500.00, tips: 50.00, cash: 400.00, tax: "95.25",
+       flags_expected: ["not 7.35%"]}
+
+- id: tax-1099-vendor
+  title: A handyman paid by check over the 1099-NEC threshold, and one paid by card (excluded)
+  area: Taxes
+  events:
+    - {type: check_out, date: 2026-01-12, payee: Rivera Handyman Services, amount: "1400.00", account: "6300", memo: hood cleaning}
+    - {type: check_out, date: 2026-01-26, payee: Rivera Handyman Services, amount: "900.00", account: "6300", memo: tile repair}
+    - {type: purchase, date: 2026-01-20, vendor: QuickFix Appliance, payment: card, receipt: {missing: true}, items: [{desc: repair, amount: 2400.00, account: "6300"}]}
+
+- id: tax-schedule-c-vehicle-asset
+  title: Schedule C with vehicle costs, a fixed asset and a business meal
+  area: Taxes
+  events:
+    - {type: purchase, date: 2026-01-09, vendor: Shell, payment: card, items: [{desc: UNLEADED, amount: 48.20, account: "6400"}]}
+    - {type: purchase, date: 2026-01-22, vendor: WebstaurantStore, payment: card, invoice: true, items: [{desc: WALK-IN FREEZER 6X8, amount: 6800.00, account: "1500", taxable: true}]}
+    - {type: purchase, date: 2026-01-24, vendor: Max Burger Hartford, payment: card, tax_rate: "7.35", items: [{desc: LUNCH WITH ACCOUNTANT, amount: 38.00, account: "6420", taxable: true}]}
+
+- id: tax-loss-month
+  title: A loss month - expenses exceed sales; Schedule C shows a loss and no SE tax
+  area: Taxes
+  events:
+    - {type: square_day, date: 2026-01-03, instore: 400.00, tips: 10.00, cash: 100.00}
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}

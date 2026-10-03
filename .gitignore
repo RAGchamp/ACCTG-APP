@@ -1,0 +1,5 @@
+# Real paperwork dropped for processing never goes to git (plan §16).
+Inbox/
+# Python caches
+__pycache__/
+.pytest_cache/

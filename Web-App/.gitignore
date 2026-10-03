@@ -1,0 +1,9 @@
+# The books and every scanned document stay out of git (plan §16).
+data/
+feedback/
+logs/
+testdata/results/
+claude-prompt-input.txt
+Claude-prompt-output.txt
+__pycache__/
+.pytest_cache/

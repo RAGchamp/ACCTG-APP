@@ -1,0 +1,12 @@
+{
+ "doc_type": "check",
+ "direction": "outgoing",
+ "check_no": "1043",
+ "date": "2026-01-02",
+ "payee": "Farmington Ave Properties LLC",
+ "payer": "Hartford Slice Pizza LLC",
+ "amount_numeric": "2800.00",
+ "amount_words": "Two thousand eight hundred and 00/100",
+ "memo": "January rent",
+ "void": false
+}

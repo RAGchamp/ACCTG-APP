@@ -1,0 +1,10 @@
+
+YOUR EARLIER PROPOSAL
+```json
+{{PREVIOUS}}
+```
+
+THE OWNER'S FEEDBACK ON IT
+"{{FEEDBACK}}"
+
+Revise the proposal to follow the owner's feedback (the owner knows the business; the posting rules and match hints still apply). If the feedback is a general instruction that should apply to future documents from this vendor or of this kind (for example "always book Restaurant Depot paper goods to 5030", "Costco runs on Sundays are personal"), put it in "rule_suggestion" as {"vendor": "...", "rule": "the instruction in one sentence", "account": "the account it points to or null"}; if it is about this document only, leave "rule_suggestion": null.

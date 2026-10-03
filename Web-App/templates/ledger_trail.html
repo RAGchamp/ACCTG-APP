@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Ledger trail{% endblock %}
+{% block content %}
+{% set c = summary.counts %}
+{% call(part) ui.overview('Ledger trail', 'Every change made to the ledger, newest first: entries posted, entries reversed, months closed and reopened, with where in the app each came from. Stored in the books and append-only: the trail itself can never be edited or deleted.') %}
+  {% if part == 'actions' %}
+    <a class="btn btn-outline-secondary bg-body" href="/ledger">← Ledger</a>
+    <a class="btn btn-outline-secondary bg-body" href="?start={{ start }}&end={{ end }}&action={{ action }}&q={{ q }}&format=csv">CSV</a>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Changes recorded', summary.total, 'since ' ~ (summary.first[:10] if summary.first else '–')) }}
+      {{ ui.tile('Entries posted', c.get('post', 0), 'from documents, by hand, opening balances', '?action=post') }}
+      {{ ui.tile('Entries reversed', c.get('reverse', 0), (c.get('reinstate', 0) ~ ' reversal(s) undone (reinstated)') if c.get('reinstate') else 'posted entries are never edited, only reversed', '?action=reverse') }}
+      {{ ui.tile('Months closed / reopened', c.get('close_month', 0) ~ ' / ' ~ c.get('reopen_month', 0), 'on the Reconcile screen', '?action=reopen_month') }}
+    </div>
+    <form class="d-flex flex-wrap gap-2 align-items-center mt-2" method="get">
+      <label class="small">Changed from <input class="form-control form-control-sm d-inline w-auto" type="date" name="start" value="{{ start }}"></label>
+      <label class="small">to <input class="form-control form-control-sm d-inline w-auto" type="date" name="end" value="{{ end }}"></label>
+      <select class="form-select form-select-sm w-auto" name="action"><option value="">all changes</option>
+        {% for k, label in actions.items() %}<option value="{{ k }}" {{ 'selected' if action == k }}>{{ label }}</option>{% endfor %}</select>
+      <input class="form-control form-control-sm w-auto" name="q" value="{{ q }}" placeholder="memo, origin, account, entry or document #" style="min-width:18em">
+      <button class="btn btn-sm btn-primary">Show</button>
+      {% if start or end or action or q %}<a class="small" href="/ledger-trail">clear</a>{% endif %}
+    </form>
+  {% endif %}
+{% endcall %}
+
+<div class="card shadow-sm"><div class="card-header">Changes ({{ rows|length }}{{ ', latest 2000' if rows|length == 2000 }})</div>
+<div class="table-responsive"><table class="table table-sm table-striped table-hover table-bordered sba-card-table align-middle mb-0">
+  <thead class="sba-head-yellow"><tr><th>#</th><th>Changed at</th><th>Change</th><th>Entry</th><th>Entry date</th><th>Memo</th>
+    <th class="num">Amount</th><th>Lines</th><th>Origin</th><th>Document</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td class="text-body-secondary">{{ r.id }}</td>
+    <td class="text-nowrap small">{{ r.at.replace('T', ' ') }}</td>
+    <td class="text-nowrap"><span class="badge text-bg-{{ {'post':'success','reverse':'danger','reinstate':'info','close_month':'secondary','reopen_month':'warning'}.get(r.action, 'light') }}">{{ r.action_label }}</span>
+      {% if r.kind and r.action == 'post' %}<div class="small text-body-secondary">{{ r.kind }}</div>{% endif %}</td>
+    <td class="text-nowrap">{% if r.entry_id %}#{{ r.entry_id }}{% endif %}{% if r.reverses %}<div class="small text-body-secondary">{{ 'undoes reversal' if r.action == 'reinstate' else 'undoes' }} #{{ r.reverses }}</div>{% endif %}
+      {% if r.period and not r.entry_id %}{{ r.period }}{% endif %}</td>
+    <td class="text-nowrap">{{ r.entry_date or '' }}</td>
+    <td>{{ r.memo or '' }}{% if r.note %}<div class="small text-body-secondary">{{ r.note }}</div>{% endif %}</td>
+    <td class="num">{{ r.total_cents|money if r.total_cents is not none }}</td>
+    <td class="small">{% if r.lines %}<details><summary>{{ r.lines|length }} line(s)</summary>
+      <table class="table table-sm table-bordered mb-0 mt-1"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th>Party / memo</th></tr></thead><tbody>
+        {% for l in r.lines %}<tr><td>{{ l.account }}</td><td class="num">{{ l.debit_cents|money(blank_zero=True) }}</td><td class="num">{{ l.credit_cents|money(blank_zero=True) }}</td>
+          <td class="text-body-secondary">{{ l.party }} {{ l.memo }}</td></tr>{% endfor %}</tbody></table></details>{% endif %}</td>
+    <td class="small">{{ r.origin }}</td>
+    <td class="small text-nowrap">{% if r.document_id %}{% set d = docs.get(r.document_id) %}<a href="/review/{{ r.document_id }}">{{ d.doc_type|doclabel if d else 'document' }} #{{ r.document_id }}</a>{% if d and d.party %}<div class="text-body-secondary">{{ d.party }}</div>{% endif %}{% endif %}</td>
+  </tr>
+  {% else %}<tr><td colspan="10" class="text-body-secondary">No changes{{ ' match the filter' if start or end or action or q }}.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

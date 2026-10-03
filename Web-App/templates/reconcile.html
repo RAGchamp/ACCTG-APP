@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Reconcile {{ month }}{% endblock %}
+{% block content %}
+{% set badge %}<span class="badge text-bg-{{ 'secondary' if rec.status == 'closed' else 'light border' }} align-middle fs-6">{{ rec.status }}</span>{% endset %}
+{% call(part) ui.overview('Reconcile ' ~ month, "Statement closing balances vs the General Ledger at month end, and the clearing accounts' open items", badge) %}
+  {% if part == 'actions' %}
+    <div class="btn-group btn-group-sm flex-wrap">{% for m in months %}
+      <a class="btn btn-outline-secondary bg-body {{ 'active' if m == month }}" href="?month={{ m }}">{{ m }}{{ ' 🔒' if statuses[m] == 'closed' }}</a>{% endfor %}</div>
+    {% if rec.status == 'closed' %}
+      <button class="btn btn-outline-danger bg-body" onclick="const n=prompt('Why reopen {{ month }}?'); if(n) run('/api/months/{{ month }}/reopen', {note: n}, 'Reopened')">Reopen {{ month }}</button>
+    {% elif rec.reconciled %}
+      <button class="btn btn-success" onclick="run('/api/months/{{ month }}/close', {}, '{{ month }} closed')">Close {{ month }}</button>
+    {% else %}
+      <button class="btn btn-outline-warning bg-body" onclick="const n=prompt('Close without reconciling - write why (audit-logged):'); if(n) run('/api/months/{{ month }}/close', {override: n}, 'Closed with override')">Close with an override note</button>
+    {% endif %}
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {% for a in rec.accounts %}
+        {{ ui.tile(('Bank 1010' if a.account == '1010' else 'Card 2100') ~ ' difference',
+                   (a.difference|money if a.difference is not none else '—'),
+                   ('✓ reconciled' if a.reconciled else ('✗ does not reconcile' if a.has_activity else 'no activity')), None,
+                   'good' if a.reconciled else ('bad' if a.has_activity else '')) }}
+      {% endfor %}
+      {{ ui.tile('Open items', rec.open_items|length, 'waiting for their statement line') }}
+      {{ ui.tile('Month', rec.status, 'closed months refuse new postings', None, 'good' if rec.status == 'closed' else '') }}
+    </div>
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card shadow-sm mb-3"><div class="card-header">Statement vs General Ledger</div>
+    <div class="table-responsive"><table class="table table-striped table-hover table-bordered sba-card-table mb-0">
+      <thead class="sba-head-yellow"><tr><th>Account</th><th class="num">Statement closing</th><th class="num">GL at month end</th><th class="num">Difference</th><th></th></tr></thead>
+      <tbody>
+      {% for a in rec.accounts %}
+      <tr><td>{{ a.account }} {{ 'Business checking' if a.account == '1010' else 'Business credit card (owed)' }}
+          {% if a.document_id %}<div class="small"><a href="/review/{{ a.document_id }}">statement #{{ a.document_id }}</a></div>{% endif %}</td>
+        <td class="num">{{ a.statement_closing|money if a.statement_closing is not none else '—' }}</td>
+        <td class="num">{{ a.gl_balance|money }}</td>
+        <td class="num">{{ a.difference|money if a.difference is not none }}</td>
+        <td>{% if a.reconciled %}<span class="text-success">✓</span>{% elif a.has_activity %}<span class="text-danger">✗</span>{% else %}<span class="text-body-secondary small">no activity</span>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div></div>
+    {% if rec.status != 'closed' and not rec.reconciled %}
+      <p class="small text-body-secondary">The month closes when the bank and card statements reconcile. A missing statement line, a document not yet booked
+        or a missing statement shows here as a difference.</p>
+    {% endif %}
+    {% if history %}<details class="small mt-3"><summary>Earlier reconciliations</summary>
+      {% for h in history %}<div>{{ h.at }} {{ h.account }}: statement {{ h.statement_closing|money if h.statement_closing is not none else '—' }} vs GL {{ h.gl_balance|money }}</div>{% endfor %}</details>{% endif %}
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm"><div class="card-header">Open items up to {{ month }} (waiting for their statement line)</div>
+    <div class="table-responsive"><table class="table table-sm table-striped table-hover table-bordered sba-card-table mb-0">
+      <thead class="sba-head-yellow"><tr><th>Date</th><th>Account</th><th>Party</th><th class="num">Amount</th><th>Document</th></tr></thead>
+      <tbody>
+      {% for i in rec.open_items %}<tr><td>{{ i.date }}</td><td>{{ i.account }}</td><td>{{ i.party }}</td><td class="num">{{ i.amount|money }}</td>
+        <td>{% if i.document_id %}<a href="/review/{{ i.document_id }}">#{{ i.document_id }}</a>{% endif %}</td></tr>
+      {% else %}<tr><td colspan="5" class="text-body-secondary small">None.</td></tr>{% endfor %}
+      </tbody></table></div></div>
+    <p class="small text-body-secondary mt-2">2150 = receipts/checks waiting for the card or bank line · 1100 = Square sales waiting for the payout ·
+      1110 = platform payouts · 1050 = checks and cash drops to deposit · 2300 = payroll the provider has not debited yet.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Review{% endblock %}
+{% block content %}
+{% set ns = namespace(questions=0, attention=0, to_propose=0) %}
+{% for q in queue %}{% set ns.questions = ns.questions + (1 if q.n_questions else 0) %}{% set ns.attention = ns.attention + (1 if q.n_errors or q.flag_errors else 0) %}{% set ns.to_propose = ns.to_propose + (0 if q.proposal else 1) %}{% endfor %}
+{% call(part) ui.overview('Review', 'Proposed journal entries, one document at a time, in the order the files were added · keys: A accept · E edit · F feedback · J / K next / previous') %}
+  {% if part == 'actions' %}
+    <div class="btn-group" role="group" aria-label="Filter the queue">
+      <a class="btn btn-outline-secondary bg-body {{ 'active' if not filt }}" href="/review">All</a>
+      <a class="btn btn-outline-secondary bg-body {{ 'active' if filt == 'questions' }}" href="/review?filter=questions">Questions</a>
+      <a class="btn btn-outline-secondary bg-body {{ 'active' if filt == 'attention' }}" href="/review?filter=attention">Attention</a>
+    </div>
+    {% if bulk %}<button class="btn btn-success" title="High confidence, all checks passed, no questions"
+       onclick="if(confirm('Accept {{ bulk|length }} proposal(s) that passed every check?')) run('/api/bulk-accept', {document_ids: {{ bulk|tojson }}}, 'Accepted')">Bulk accept {{ bulk|length }} safe proposal(s)</button>{% endif %}
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('In the queue' ~ (' (' ~ filt ~ ')' if filt else ''), queue|length, ns.to_propose ~ ' still to propose') }}
+      {{ ui.tile('With questions', ns.questions, 'the Bookkeeper asks you', '/review?filter=questions') }}
+      {{ ui.tile('Need attention', ns.attention, 'a failed check', '/review?filter=attention', 'bad' if ns.attention else '') }}
+      {{ ui.tile('Safe to bulk accept', bulk|length, 'high confidence, all checks passed', None, 'good' if bulk else '') }}
+    </div>
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <!-- Queue -->
+  <div class="col-xl-2 col-lg-3">
+    <div class="card shadow-sm"><div class="card-header">Review queue ({{ queue|length }})</div>
+    <div class="list-group list-group-flush small sba-list" style="max-height: 75vh; overflow:auto">
+      {% for q in queue %}
+      <a href="/review/{{ q.id }}{{ '?filter=' ~ filt if filt }}" class="list-group-item list-group-item-action queue-item {{ 'active' if doc and q.id == doc.id }}">
+        <div class="d-flex justify-content-between"><b>{{ q.doc_type|doclabel }}</b><span>{{ q.total_cents|money if q.total_cents is not none }}</span></div>
+        <div class="text-truncate">{{ q.party or '' }} {{ q.doc_date or '' }}</div>
+        <div>{% if not q.proposal %}<span class="badge text-bg-secondary">to propose</span>{% endif %}
+          {% if q.n_errors or q.flag_errors %}<span class="badge text-bg-danger">check</span>{% endif %}
+          {% if q.n_questions %}<span class="badge text-bg-warning">question</span>{% endif %}
+          {% if q.proposal and q.proposal.confidence == 'high' and not q.n_errors %}<span class="badge text-bg-success">high</span>{% endif %}</div>
+      </a>
+      {% else %}<div class="text-body-secondary p-2">Nothing to review. <a href="/inbox">Add documents</a>.</div>{% endfor %}
+    </div></div>
+  </div>
+
+  {% if doc %}
+  <!-- Document -->
+  <div class="col-xl-5 col-lg-9">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <div><h2 class="h6 mb-0">{{ doc.doc_type|doclabel }} #{{ doc.id }} - {{ doc.party or '' }}</h2>
+        <div class="small text-body-secondary"><a href="/files/{{ file.id }}/original" target="_blank">{{ file.filename }}</a>
+          · page(s) {{ pages|join(', ') }} · status {{ doc.status|statuslabel }}</div></div>
+    </div>
+    {% if file.kind == 'pdf' %}
+      {% for p in pages %}<img class="doc-image mb-2" src="/files/{{ file.id }}/page/{{ p }}.png" alt="page {{ p }}" loading="lazy">{% endfor %}
+    {% else %}<div class="alert alert-secondary small">CSV export - imported exactly, without Claude.</div>{% endif %}
+    <details class="mb-2" {{ 'open' if doc.flags_obj }}><summary class="small">Extracted data and checks</summary>
+      {% for f in doc.flags_obj %}<div class="small flag-{{ f.level }}">● {{ f.message }}</div>{% endfor %}
+      <textarea id="ext" class="form-control mono mt-1" rows="12">{{ doc.extraction_obj|tojson(indent=1) }}</textarea>
+      <button class="btn btn-sm btn-outline-secondary mt-1" onclick="saveExtraction()">Save corrected figures and re-check</button>
+    </details>
+  </div>
+
+  <!-- Proposal -->
+  <div class="col-xl-5">
+    <div class="sticky-col">
+    {% if earlier_open %}<div class="alert alert-info small py-1">{{ earlier_open }} earlier document(s) are not reviewed yet - review in order so receipts meet their statement lines.</div>{% endif %}
+    {% set blocking = doc.flags_obj|selectattr('level', 'equalto', 'error')|list %}
+    {% if doc.status in ('posted', 'support', 'rejected') %}
+      <div class="card"><div class="card-header">{{ doc.status|statuslabel|capitalize }}</div><div class="card-body small">
+        {% if doc.status == 'rejected' %}<p>Rejected: {{ doc.reject_reason }}</p>
+          <button class="btn btn-sm btn-outline-secondary" onclick="run('/api/documents/{{ doc.id }}/reopen', {}, 'Back in the queue')">Put back in the queue</button>
+        {% elif doc.status == 'support' %}<p>Linked to entries booked from another document - nothing posted twice.</p>
+        {% endif %}
+        {% for e in entries_posted %}<table class="table table-sm"><thead><tr><th colspan="3">{{ e.date }} · {{ e.memo }}</th></tr></thead><tbody>
+          {% for l in e.lines %}<tr><td>{{ l.account }}</td><td class="num">{{ l.debit if l.debit != '0.00' }}</td><td class="num">{{ l.credit if l.credit != '0.00' }}</td></tr>{% endfor %}</tbody></table>{% endfor %}
+        {% if doc.status == 'posted' %}<a href="/ledger?q={{ doc.party or '' }}">Open in the ledger</a> (reverse an entry there to correct it){% endif %}
+      </div></div>
+    {% elif not prop %}
+      <div class="card"><div class="card-body">
+        <p class="mb-2">No proposal yet.</p>
+        <button class="btn btn-primary" onclick="run('/api/propose', {document_ids: [{{ doc.id }}]}, 'Proposal ready')">Run the Bookkeeper</button>
+      </div></div>
+    {% else %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <span>Proposed entries <span class="badge text-bg-{{ {'high':'success','medium':'warning','low':'danger'}.get(prop.confidence, 'secondary') }}">{{ prop.confidence }}</span>
+            <span class="small text-body-secondary">v{{ prop.version }} · {{ prop.source }}</span></span>
+          {% if stale %}<a href="#" class="small" onclick="run('/api/propose', {document_ids: [{{ doc.id }}], refresh: true}, 'Refreshed');return false" title="Entries were posted since this proposal was made">Refresh ↻</a>{% endif %}
+        </div>
+        <div class="card-body">
+          {% if prop.reason %}<p class="small mb-2"><b>Why:</b> {{ prop.reason }}</p>{% endif %}
+          {% for h in prop.matches_obj %}<div class="small text-success">⇄ {{ h.ref }}: {{ h.note }}</div>{% endfor %}
+          {% for q in prop.questions_obj %}<div class="alert alert-warning small py-1 my-1">❓ {{ q }}</div>{% endfor %}
+          {% for e in prop.errors_obj %}<div class="small text-danger">✗ {{ e }}</div>{% endfor %}
+          {% if prop.support_only %}
+            <div class="alert alert-success small my-2">Support only: this document is already booked from another document. Accepting links it - nothing is posted twice.</div>
+          {% endif %}
+          <div id="entries" class="mt-2"></div>
+          <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+            <span id="balance" class="small"></span>
+          </div>
+          {% if blocking %}<div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="confirm">
+            <label class="form-check-label small" for="confirm">I checked the flagged figures against the document</label></div>{% endif %}
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button class="btn btn-success" onclick="accept()" title="A">Accept</button>
+            <button class="btn btn-outline-primary" onclick="toggleEdit()" title="E">Edit</button>
+            <button class="btn btn-outline-secondary" onclick="document.getElementById('fbbox').classList.toggle('d-none')" title="F">Feedback…</button>
+            <button class="btn btn-outline-danger" onclick="reject()">Reject</button>
+          </div>
+          <div id="fbbox" class="mt-2 d-none">
+            <textarea id="fb" class="form-control" rows="2" maxlength="{{ feedback_max }}" placeholder="e.g. The TV was personal. / Split: $40 was cleaning supplies. / Always book CVS to 6310."></textarea>
+            <div class="d-flex justify-content-between"><span class="small text-body-secondary">max {{ feedback_max }} characters - Claude revises the proposal</span>
+              <button class="btn btn-sm btn-primary mt-1" onclick="sendFeedback()">Send</button></div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {% for fb in feedback %}{% if fb.rule and fb.rule_status == 'proposed' %}
+      <div class="alert alert-info small mt-2">Remember this rule? <b>{{ fb.rule.vendor }}</b>: {{ fb.rule.rule }}
+        <div class="mt-1"><button class="btn btn-sm btn-primary" onclick="run('/api/feedback/{{ fb.id }}/rule', {decision: 'always'}, 'Rule saved')">Yes, always</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="run('/api/feedback/{{ fb.id }}/rule', {decision: 'once'})">Only this time</button></div></div>
+    {% endif %}{% endfor %}
+    {% if history|length > 1 %}<details class="small mt-2"><summary>Proposal history</summary>
+      {% for h in history %}<div>v{{ h.version }} {{ h.source }} {{ h.status }} {{ h.confidence }} {{ h.created_at }}</div>{% endfor %}
+      {% for fb in feedback %}<div class="text-body-secondary">feedback: “{{ fb.text }}”</div>{% endfor %}</details>{% endif %}
+    </div>
+  </div>
+  {% elif queue|length == 0 %}
+  <div class="col"><div class="alert alert-success">All caught up.</div></div>
+  {% endif %}
+</div>
+
+<datalist id="acctlist">{% for a in accounts %}<option value="{{ a.number }}">{{ a.number }} {{ a.name }}</option>{% endfor %}</datalist>
+{% endblock %}
+{% block scripts %}
+{% if doc and prop %}
+<script>
+const DOC = {{ doc.id }};
+const NAMES = {{ accounts|map(attribute='number')|list|tojson }}.reduce((m, n, i) => (m[n] = {{ accounts|map(attribute='name')|list|tojson }}[i], m), {});
+let ENTRIES = {{ prop.entries_obj|tojson }};
+let editing = false;
+const cents = v => Math.round(parseFloat(String(v || '0').replace(/[$,]/g, '')) * 100) || 0;
+const money = c => (c < 0 ? '-' : '') + '$' + (Math.abs(c) / 100).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+function render() {
+  const box = document.getElementById('entries');
+  let html = '', allOk = true;
+  ENTRIES.forEach((e, ei) => {
+    let dr = 0, cr = 0;
+    html += `<table class="table table-sm mb-2"><thead><tr><th colspan="4" class="small">${esc(e.ref || '')} · ${editing ? `<input class="form-control form-control-sm d-inline w-auto" value="${esc(e.date)}" onchange="ENTRIES[${ei}].date=this.value">` : esc(e.date)} · ${esc(e.memo || '')}</th></tr>
+      <tr class="small"><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead>`;
+    e.lines.forEach((l, li) => {
+      dr += cents(l.debit); cr += cents(l.credit);
+      if (editing) {
+        html += `<tr><td><input list="acctlist" class="form-control form-control-sm" value="${esc(l.account)}" onchange="ENTRIES[${ei}].lines[${li}].account=this.value;render()">
+          <div class="small text-body-secondary">${esc(NAMES[l.account] || '?')}</div></td>
+          <td><input class="form-control form-control-sm num" value="${cents(l.debit) ? (cents(l.debit)/100).toFixed(2) : ''}" onchange="ENTRIES[${ei}].lines[${li}].debit=this.value;render()"></td>
+          <td><input class="form-control form-control-sm num" value="${cents(l.credit) ? (cents(l.credit)/100).toFixed(2) : ''}" onchange="ENTRIES[${ei}].lines[${li}].credit=this.value;render()"></td>
+          <td><button class="btn btn-sm btn-link text-danger" onclick="ENTRIES[${ei}].lines.splice(${li},1);render()">×</button></td></tr>`;
+      } else {
+        html += `<tr><td>${esc(l.account)} <span class="small text-body-secondary">${esc(NAMES[l.account] || '')}</span>${l.memo ? `<div class="small text-body-secondary">${esc(l.memo)}</div>` : ''}</td>
+          <td class="num">${cents(l.debit) ? money(cents(l.debit)) : ''}</td><td class="num">${cents(l.credit) ? money(cents(l.credit)) : ''}</td><td></td></tr>`;
+      }
+    });
+    const ok = dr === cr;
+    allOk = allOk && ok;
+    html += `<tr class="small ${ok ? 'text-success' : 'text-danger'}"><td>${ok ? 'balanced' : 'NOT balanced'}</td><td class="num">${money(dr)}</td><td class="num">${money(cr)}</td>
+      <td>${editing ? `<button class="btn btn-sm btn-link" onclick="ENTRIES[${ei}].lines.push({account:'',debit:'0',credit:'0'});render()">+ line</button>` : ''}</td></tr></table>`;
+  });
+  box.innerHTML = html || '<div class="small text-body-secondary">No entries.</div>';
+  document.getElementById('balance').innerHTML = editing ? (allOk ? '<span class="text-success">All entries balance</span>' : '<span class="text-danger">Fix the entries that do not balance</span>') : '';
+}
+function toggleEdit() { editing = !editing; render(); }
+async function accept() {
+  const c = document.getElementById('confirm');
+  const data = { confirm: c ? c.checked : false };
+  if (editing) data.entries = ENTRIES;
+  const out = await run(`/api/documents/${DOC}/accept`, data, null, false);
+  if (out) location.href = '/review' + location.search;
+}
+function reject() {
+  const reason = prompt('Why is it rejected? (not business, duplicate, unreadable, prior year ...)');
+  if (reason) run(`/api/documents/${DOC}/reject`, { reason }).then(() => location.href = '/review');
+}
+function sendFeedback() { run(`/api/documents/${DOC}/feedback`, { text: document.getElementById('fb').value }, 'Revised'); }
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'a') accept(); else if (e.key === 'e') toggleEdit();
+  else if (e.key === 'f') document.getElementById('fbbox').classList.toggle('d-none');
+  else if (e.key === 'j' || e.key === 'k') {
+    const items = [...document.querySelectorAll('.queue-item')]; const i = items.findIndex(x => x.classList.contains('active'));
+    const n = items[i + (e.key === 'j' ? 1 : -1)]; if (n) location.href = n.href;
+  }
+});
+render();
+</script>
+{% endif %}
+{% if doc %}<script>
+async function saveExtraction() {
+  let data;
+  try { data = JSON.parse(document.getElementById('ext').value); } catch (e) { showAlert('That is not valid JSON: ' + e.message); return; }
+  run(`/api/documents/{{ doc.id }}/extraction`, { extraction: data }, 'Saved - run the Bookkeeper again');
+}
+</script>{% endif %}
+{% endblock %}

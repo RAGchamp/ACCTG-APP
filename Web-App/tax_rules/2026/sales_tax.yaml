@@ -1,0 +1,17 @@
+# Connecticut sales and use tax, 2026 (plan §10.2). VERIFY against CT DRS guidance each year.
+version: "2026.1"
+verified: false
+form: "OS-114 Sales and Use Tax Return (filed and paid on myconneCT)"
+rates:
+  meals: "7.35"      # 6.35% general rate + 1% on meals, since 2019-10-01
+  general: "6.35"
+local_sales_tax: false          # Connecticut has no local sales taxes (Hartford included)
+frequency: monthly               # decision D6; DRS assigns it
+due: "last day of the month after the period"
+taxable_revenue_accounts: ["4000", "4010", "4050"]    # 4050 own delivery fee: taxable (decision D8, confirm)
+marketplace_revenue_accounts: ["4020"]               # DoorDash / Uber Eats / Grubhub collect and remit
+deduction_accounts: ["4090"]                          # discounts, comps, refunds reduce taxable receipts
+liability_account: "2200"
+open_questions:
+  - "How must marketplace facilitator (DoorDash / Uber Eats / Grubhub) sales appear on OS-114? Shown here as gross receipts with a matching deduction - confirm with CT DRS or the CPA."
+  - "Is the shop's own delivery fee taxable? Treated as taxable (D8) - confirm."

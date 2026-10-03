@@ -1,0 +1,43 @@
+# Credit card statement (plan §15.4)
+- id: card-month
+  title: A month on the card - matched receipts, purchases without receipts, a refund, interest, fees, the payment
+  area: Credit card statement
+  opening: {bank: "15000.00", card: "812.40"}
+  events:
+    - {type: purchase, date: 2026-01-04, vendor: Restaurant Depot, payment: card,
+       items: [{desc: MOZZ LOAF 6LB X3, amount: 71.85, account: "5010"}]}
+    - {type: purchase, date: 2026-01-11, vendor: Sysco Connecticut, payment: card, invoice: true,
+       items: [{desc: DOUGH BALLS FROZEN 48CT, amount: 52.80, account: "5010"}, {desc: PIZZA BOX 14IN 50CT, amount: 29.50, account: "5030", taxable: true}]}
+    - {type: purchase, date: 2026-01-15, vendor: Shell, payment: card, receipt: {missing: true},
+       items: [{desc: fuel, amount: 41.20, account: "6400"}]}
+    - {type: purchase, date: 2026-01-19, vendor: Facebook Ads, payment: card, receipt: {missing: true},
+       items: [{desc: ads, amount: 60.00, account: "6410"}]}
+    - {type: purchase, date: 2026-01-21, vendor: WebstaurantStore, payment: card, refund: true, receipt: {missing: true},
+       items: [{desc: returned pans, amount: 22.40, account: "6320"}]}
+    - {type: card_charge, date: 2026-01-31, kind: interest, amount: "9.86"}
+    - {type: card_charge, date: 2026-01-31, kind: fee, amount: "35.00", description: "LATE FEE"}
+    - {type: card_charge, date: 2026-01-20, kind: annual_fee, amount: "95.00"}
+    - {type: bank, kind: card_payment, date: 2026-01-12, amount: "812.40"}
+
+- id: card-bulk-60
+  title: A 60-line card statement with no receipts - bulk accept
+  area: Credit card statement
+  card_bulk: true
+  events:
+    - {type: purchases_batch, start: 2026-01-01, days: 30, count: 60}
+
+- id: card-statement-gap
+  title: The February card statement is missing -> March shows a gap and does not reconcile
+  area: Credit card statement
+  skip_statements: ["card:2026-02"]
+  statement_flags: {"card:2026-03": ["gap in card statements", "opening balance"]}
+  events:
+    - {type: purchase, date: 2026-01-12, vendor: Shell, payment: card, receipt: {missing: true}, items: [{desc: fuel, amount: 38.10, account: "6400"}]}
+    - {type: purchase, date: 2026-02-12, vendor: Shell, payment: card, receipt: {missing: true}, items: [{desc: fuel, amount: 44.30, account: "6400"}]}
+    - {type: purchase, date: 2026-03-12, vendor: Shell, payment: card, receipt: {missing: true}, items: [{desc: fuel, amount: 40.05, account: "6400"}]}
+
+- id: card-multipage
+  title: A two-page card statement (a line list longer than one page)
+  area: Credit card statement
+  events:
+    - {type: purchases_batch, start: 2026-01-01, days: 30, count: 40}

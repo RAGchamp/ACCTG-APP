@@ -1,0 +1,212 @@
+# Purchase receipts (plan §15.4). Amounts in dollars; accounts from the starter Chart of Accounts.
+# Each scenario becomes its own sandbox: python -m testdata generate <id>
+- id: receipt-card-matched
+  title: Receipt paid by card, then matched to the card statement line (settles 2150)
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-14
+      vendor: Restaurant Depot
+      payment: card
+      items:
+        - {desc: WHOLE MILK MOZZ 6/5LB, qty: 2, amount: 84.98, account: "5010"}
+        - {desc: PIZZA BOX 16IN 50CT, amount: 32.50, account: "5030", taxable: true}
+
+- id: receipt-cash-split
+  title: Cash receipt split across food, bags and cleaning supplies (7 lines -> 3 accounts)
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-09
+      vendor: BJ's Wholesale
+      payment: cash
+      items:
+        - {desc: ALL PURPOSE FLOUR 50LB, amount: 21.99, account: "5010"}
+        - {desc: SAN MARZANO TOMATO 6/#10, amount: 38.40, account: "5010"}
+        - {desc: TAKEOUT BAGS 500CT, amount: 18.75, account: "5030", taxable: true}
+        - {desc: DEGREASER 1GAL, amount: 12.49, account: "6310", taxable: true}
+
+- id: receipt-petty-cash
+  title: Small purchase paid from petty cash
+  area: Purchase receipts
+  opening: {bank: "15000.00", petty: "200.00"}
+  events:
+    - type: purchase
+      date: 2026-01-11
+      vendor: CVS
+      payment: petty_cash
+      items:
+        - {desc: PAPER TOWELS 6PK, amount: 8.99, account: "6310", taxable: true}
+
+- id: receipt-debit-matched
+  title: Receipt paid by debit card, matched to the bank statement line
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-16
+      vendor: Home Depot
+      payment: debit
+      items:
+        - {desc: SHUTOFF VALVE 3/4, amount: 23.97, account: "6300", taxable: true}
+        - {desc: PLUMBERS TAPE, amount: 3.48, account: "6300", taxable: true}
+
+- id: receipt-tax-rates
+  title: Receipts at 7.35% (meal), 6.35% (goods) and with no tax (food for resale)
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-06
+      vendor: Costco
+      payment: card
+      items:
+        - {desc: KS MOZZARELLA 5LB, amount: 17.99, account: "5010"}
+        - {desc: ALUMINUM PANS 30CT, amount: 19.99, account: "6320", taxable: true}
+    - type: purchase
+      date: 2026-01-20
+      vendor: Max Burger Hartford
+      payment: card
+      tax_rate: "7.35"
+      tip: "9.00"
+      items:
+        - {desc: LUNCH MEETING WITH SUPPLIER, amount: 46.00, account: "6420", taxable: true}
+
+- id: receipt-personal-item
+  title: A personal item on a business receipt -> owner feedback moves it to Owner's draws
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-18
+      vendor: Costco
+      payment: card
+      feedback: "The TV was for my home - personal, not business."
+      items:
+        - {desc: KS PEPPERONI 5LB, amount: 34.99, account: "5010"}
+        - {desc: 55IN SMART TV, amount: 379.99, account: "3100", first_account: "6320", taxable: true}
+
+- id: receipt-equipment
+  title: Equipment at the capitalization threshold (fixed asset) and just under it (expense)
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-22
+      vendor: WebstaurantStore
+      payment: card
+      receipt: {layout: invoice}
+      invoice: true
+      items:
+        - {desc: BAKERS PRIDE DECK PIZZA OVEN Y-600, amount: 4200.00, account: "1500", taxable: true}
+    - type: purchase
+      date: 2026-01-23
+      vendor: WebstaurantStore
+      payment: card
+      invoice: true
+      items:
+        - {desc: HOBART MIXER 10QT REFURB, amount: 2499.00, account: "6320", taxable: true}
+
+- id: receipt-refund
+  title: A return/refund receipt, matched to the refund credit on the card statement
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-08
+      vendor: Restaurant Depot
+      payment: card
+      items:
+        - {desc: CHEF KNIFE SET, amount: 64.99, account: "6320", taxable: true}
+    - type: purchase
+      date: 2026-01-12
+      vendor: Restaurant Depot
+      payment: card
+      refund: true
+      items:
+        - {desc: CHEF KNIFE SET - RETURN, amount: 64.99, account: "6320", taxable: true}
+
+- id: receipt-use-tax
+  title: Out-of-state online order with no CT tax charged -> use tax flag and OS-114 use tax
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-19
+      vendor: Pizza Tools Direct (NH)
+      payment: card
+      no_tax: true
+      invoice: true
+      flags_expected: ["use tax"]
+      expect: flag
+      owner: [{action: accept, confirm: true}]
+      items:
+        - {desc: PIZZA PEELS 14IN X2, amount: 89.90, account: "6320", taxable: true}
+
+- id: receipt-multi-on-one-page
+  title: Three receipts scanned on one page (one file, three documents)
+  area: Purchase receipts
+  events:
+    - {type: purchase, date: 2026-01-05, vendor: CVS, payment: cash, receipt: {group: batch1},
+       items: [{desc: HAND SOAP, amount: 4.49, account: "6310", taxable: true}]}
+    - {type: purchase, date: 2026-01-05, vendor: Stop & Shop, payment: cash, receipt: {group: batch1},
+       items: [{desc: FRESH BASIL, amount: 6.99, account: "5010"}, {desc: GARLIC 3LB, amount: 7.49, account: "5010"}]}
+    - {type: purchase, date: 2026-01-05, vendor: Shell, payment: cash, receipt: {group: batch1},
+       items: [{desc: UNLEADED 11.2 GAL, amount: 38.64, account: "6400"}]}
+
+- id: receipt-multipage-invoice
+  title: A two-page Sysco invoice paid by card
+  area: Purchase receipts
+  events:
+    - type: purchase
+      date: 2026-01-13
+      vendor: Sysco Connecticut
+      payment: card
+      invoice: true
+      receipt: {pages: 2, layout: invoice}
+      items:
+        - {desc: CHEESE MOZZ LMPS SHRD 4/5LB, amount: 96.40, account: "5010"}
+        - {desc: PEPPERONI SLICED 2/12.5LB, amount: 118.75, account: "5010"}
+        - {desc: SAUSAGE ITAL CRMBL 2/5LB, amount: 61.20, account: "5010"}
+        - {desc: FLOUR HI GLUTEN 50LB, amount: 27.35, account: "5010"}
+        - {desc: OLIVE OIL POMACE 6/1GAL, amount: 72.10, account: "5010"}
+        - {desc: TOMATO SAUCE PIZZA 6/#10, amount: 44.85, account: "5010"}
+        - {desc: MUSHROOM SLICED 10LB, amount: 23.60, account: "5010"}
+        - {desc: PEPPERS GREEN DICED 2/5LB, amount: 18.90, account: "5010"}
+        - {desc: ONION DICED 2/5LB, amount: 14.30, account: "5010"}
+        - {desc: CUP PLASTIC 16OZ 1000CT, amount: 58.40, account: "5030", taxable: true}
+        - {desc: NAPKIN DINNER 3000CT, amount: 41.25, account: "5030", taxable: true}
+        - {desc: SANITIZER QUAT 4/1GAL, amount: 36.80, account: "6310", taxable: true}
+
+- id: receipt-rotated-faded
+  title: A rotated scan and a faded thermal receipt
+  area: Purchase receipts
+  difficulty: messy
+  events:
+    - {type: purchase, date: 2026-01-10, vendor: Restaurant Depot, payment: cash, receipt: {rotate: 6},
+       items: [{desc: RICOTTA WHOLE MILK 3LB, amount: 11.29, account: "5010"}, {desc: PARMESAN GRATED 5LB, amount: 32.99, account: "5010"}]}
+    - {type: purchase, date: 2026-01-17, vendor: CVS, payment: cash, receipt: {faded: true},
+       items: [{desc: TRASH BAGS 55GAL, amount: 16.99, account: "6310", taxable: true}]}
+
+- id: receipt-upside-down
+  title: A receipt scanned upside down
+  area: Purchase receipts
+  events:
+    - {type: purchase, date: 2026-01-21, vendor: Stop & Shop, payment: cash, receipt: {upside_down: true},
+       items: [{desc: FRESH MOZZARELLA 1LB X4, amount: 27.96, account: "5010"}]}
+
+- id: receipt-illegible-digit
+  title: A digit of the total is unreadable -> [?] and the owner confirms the figure
+  area: Purchase receipts
+  difficulty: adversarial
+  events:
+    - {type: purchase, date: 2026-01-15, vendor: Restaurant Depot, payment: cash, illegible: total,
+       items: [{desc: SAUSAGE LINKS 10LB, amount: 42.80, account: "5010"}, {desc: FOIL SHEETS 500CT, amount: 24.60, account: "5030", taxable: true}]}
+
+- id: receipt-duplicate-upload
+  title: The same scan uploaded twice -> the second upload is refused
+  area: Purchase receipts
+  events:
+    - {type: purchase, date: 2026-01-07, vendor: Costco, payment: cash, receipt: {duplicate_upload: true},
+       items: [{desc: KS BOTTLED WATER 40PK, amount: 4.99, account: "5020"}]}
+
+- id: receipt-late
+  title: A receipt that arrives after its card statement -> support only, no second expense
+  area: Purchase receipts
+  events:
+    - {type: purchase, date: 2026-01-26, vendor: Restaurant Depot, payment: card, receipt: {late: true},
+       items: [{desc: PROVOLONE SLICED 6LB, amount: 38.94, account: "5010"}]}

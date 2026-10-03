@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Inbox{% endblock %}
+{% block content %}
+{% call(part) ui.overview('Inbox', stats.files ~ ' file(s) · ' ~ stats.documents ~ ' document(s) found · ' ~ waiting|length ~ ' waiting in the Inbox folder') %}
+  {% if part == 'actions' %}
+    <button class="btn btn-primary" onclick="run('/api/inbox/scan', {}, 'Inbox processed')">↻ Process the inbox ({{ waiting|length }})</button>
+    <button class="btn btn-outline-primary bg-body" onclick="run('/api/propose', {}, 'Proposals ready')">Run the Bookkeeper on documents still to propose</button>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Files waiting or failed', stats.new_failed, 'of ' ~ stats.files ~ ' file(s)') }}
+      {{ ui.tile('Documents to propose', stats.to_propose, 'the Bookkeeper has not run yet') }}
+      {{ ui.tile('Proposals to review', stats.to_review, 'on the Review screen', '/review') }}
+      {{ ui.tile('Claude calls', stats.calls, '$' ~ '%.2f'|format(stats.usd) ~ ' at API rates') }}
+    </div>
+  {% endif %}
+{% endcall %}
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card h-100 shadow-sm"><div class="card-header">Upload scans or exports</div><div class="card-body">
+    <p class="small text-body-secondary mb-2">Receipts, card and bank statements, checks, handwritten cash sheets, Square reports,
+      DoorDash / Uber Eats / Grubhub statements, payroll reports - as PDF, or Square / bank / card exports as CSV.
+      The same file is never added twice.</p>
+    <form id="up" class="d-flex flex-wrap gap-2 align-items-center">
+      <input class="form-control" type="file" name="files" multiple accept=".pdf,.csv" style="max-width:420px">
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="prop" checked><label class="form-check-label small" for="prop">run the Bookkeeper after extraction</label></div>
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100 shadow-sm"><div class="card-header">Inbox folder</div><div class="card-body">
+    <p class="small text-body-secondary mb-2">Or drop files into <span class="mono">{{ inbox_dir }}</span> and click ↻. Added files move to
+      <span class="mono">processed\</span>; refused ones to <span class="mono">refused\</span> with the reason.</p>
+    <button class="btn btn-outline-primary" onclick="run('/api/inbox/scan', {}, 'Inbox processed')">↻ Process the inbox ({{ waiting|length }} waiting)</button>
+    {% if biz.is_sandbox %}<button class="btn btn-outline-warning ms-2" onclick="if(confirm('Reset this sandbox and load its generated files?')) run('/api/testdata/sandbox/{{ biz.name }}/load', {}, 'Loaded')">Load the sandbox's generated files</button>{% endif %}
+  </div></div></div>
+</div>
+
+<div class="card shadow-sm"><div class="card-header">Files ({{ files|length }})</div>
+<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle mb-0">
+<thead><tr><th>#</th><th>File</th><th>Pages</th><th>Status</th><th>Documents found</th><th class="num">Claude</th><th></th></tr></thead>
+<tbody>
+{% for f in files %}
+<tr>
+  <td class="text-body-secondary">{{ f.id }}</td>
+  <td><a href="/files/{{ f.id }}/original" target="_blank">{{ f.filename }}</a>
+    <div class="small text-body-secondary">{{ f.kind|upper }}{{ ' · scanned' if f.scanned }}{{ ' · synthetic' if f.synthetic }} · {{ f.added_at[:16] }}</div>
+    {% if f.error %}<div class="small text-danger">{{ f.error }}</div>{% endif %}</td>
+  <td>{{ f.page_count or '' }}</td>
+  <td><span class="badge text-bg-{{ {'extracted':'success','failed':'danger','extracting':'info'}.get(f.status, 'secondary') }}">{{ f.status }}</span></td>
+  <td class="small">{% for d in docs.get(f.id, []) %}
+      <div><a href="/review/{{ d.id }}">{{ d.doc_type|doclabel }}</a> {{ d.party or '' }} {{ d.doc_date or '' }}
+        <span class="text-body-secondary">{{ d.total_cents|money if d.total_cents is not none }}</span>
+        <span class="badge text-bg-light border">{{ d.status|statuslabel }}</span></div>
+    {% endfor %}</td>
+  <td class="num small">{% set c = costs.get(f.id) %}{% if c %}{{ c['n'] }} call(s)<br>${{ '%.3f'|format(c['usd'] or 0) }} · {{ '%.0f'|format(c['secs'] or 0) }}s{% endif %}</td>
+  <td class="text-nowrap">{% if f.kind == 'pdf' %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="run('/api/files/{{ f.id }}/extract', {}, 'Extracted')">Extract</button>
+    <button class="btn btn-sm btn-outline-secondary" title="Re-render the pages at 300 dpi and extract again" onclick="run('/api/files/{{ f.id }}/extract', {higher_dpi: true}, 'Extracted')">Re-extract (higher dpi)</button>
+  {% else %}<button class="btn btn-sm btn-outline-secondary" onclick="run('/api/files/{{ f.id }}/extract', {}, 'Imported')">Import</button>{% endif %}</td>
+</tr>
+{% else %}<tr><td colspan="7" class="text-body-secondary">No files yet.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+document.getElementById('up').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  fd.append('propose', document.getElementById('prop').checked ? '1' : '0');
+  try {
+    const out = await api('/api/upload', fd);
+    out.messages.forEach(m => showAlert(m, m.endsWith('added') ? 'success' : 'warning'));
+    if (out.job) pollJob(out.job, 'Extraction finished', true); else setTimeout(() => location.reload(), 1200);
+  } catch (err) { showAlert(err.message); }
+});
+</script>{% endblock %}

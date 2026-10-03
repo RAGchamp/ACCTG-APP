@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Review input documents{% endblock %}
+{% block content %}
+{% call(part) ui.overview('Review input documents', 'Choose the books, tick documents and click Review: each scan next to what was read from it and where it landed in the ledger, the financial statements and the tax worksheets. Feedback is saved as JSON in Web-App\\feedback\\. This screen does not change which books are open.') %}
+  {% if part == 'actions' %}
+    <button class="btn btn-primary rev-btn" disabled>Review</button>
+  {% else %}
+    <div class="tile d-flex flex-wrap gap-4 align-items-center py-2">
+      <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="bk-live">
+        <label class="form-check-label" for="bk-live">Live documents</label></div>
+      <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="bk-sandbox">
+        <label class="form-check-label" for="bk-sandbox">Sandbox documents</label></div>
+      <select id="bk-which" class="form-select form-select-sm w-auto" title="Which sandbox" disabled>
+        <option value="all">all sandboxes</option>{% for s in sandboxes_all %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+      <span class="small text-body-secondary ms-auto">Up to {{ max_docs }} documents at a time.</span>
+    </div>
+  {% endif %}
+{% endcall %}
+
+<div id="empty" class="text-body-secondary small">Tick <b>Live documents</b> and/or <b>Sandbox documents</b> to list their input documents.</div>
+<div id="loading" class="text-body-secondary small d-none">Loading…</div>
+
+<div id="list" class="d-none">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+      <span>Input documents</span>
+      <input id="f-q" class="form-control form-control-sm w-auto ms-2" placeholder="filter title / file name" style="min-width:16em">
+      <select id="f-type" class="form-select form-select-sm w-auto"><option value="">all types</option></select>
+      <select id="f-status" class="form-select form-select-sm w-auto"><option value="">all statuses</option></select>
+      <select id="f-month" class="form-select form-select-sm w-auto"><option value="">all months</option></select>
+      <span class="small fw-normal ms-auto"><span id="shown">0</span> shown · <b id="sel-count">0</b> selected</span>
+    </div>
+    <div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle mb-0">
+      <thead><tr><th style="width:2em"><input class="form-check-input" type="checkbox" id="sel-all" title="Select all shown"></th>
+        <th>Books</th><th>Title</th><th>Type</th><th>Date</th><th class="num">Total</th><th>Status</th><th>File</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+  <div class="d-flex gap-2 align-items-center mt-2">
+    <button class="btn btn-primary rev-btn" disabled>Review</button>
+    <span class="small text-body-secondary">Up to {{ max_docs }} documents at a time.</span>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>const MAX_DOCS = {{ max_docs }};</script><script src="/static/doc_review.js"></script>{% endblock %}

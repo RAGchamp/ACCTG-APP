@@ -1,0 +1,30 @@
+{
+ "doc_type": "purchase_receipt",
+ "vendor": "Restaurant Depot",
+ "date": "2026-01-14",
+ "invoice_no": "4471203",
+ "lines": [
+  {
+   "description": "WHOLE MILK MOZZ 6/5LB",
+   "qty": 2,
+   "amount": "84.98",
+   "taxable": false
+  },
+  {
+   "description": "PIZZA BOX 16IN 50CT",
+   "qty": 1,
+   "amount": "32.50",
+   "taxable": true
+  }
+ ],
+ "subtotal": "117.48",
+ "tax": "2.06",
+ "tip": null,
+ "total": "119.54",
+ "payment": {
+  "method": "card",
+  "card_last4": "4417",
+  "check_no": null
+ },
+ "is_refund": false
+}

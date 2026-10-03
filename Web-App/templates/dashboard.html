@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Dashboard - {{ profile.name }}{% endblock %}
+{% block content %}
+{% set to_review = counts.get('proposed', 0) + counts.get('needs_review', 0) + counts.get('extracted', 0) %}
+{% call(part) ui.overview(profile.name, profile.address ~ ' · single-member LLC · books from ' ~ profile.books_start ~ ' · ' ~ month) %}
+  {% if part == 'actions' %}
+    <a class="btn btn-primary" href="/inbox">Add documents</a>
+    <a class="btn btn-outline-primary bg-body" href="/review">Review {{ to_review }}</a>
+  {% else %}
+    <div class="row g-2 row-cols-1 row-cols-sm-2 row-cols-lg-4">
+      {{ ui.tile('To review', to_review, counts.get('needs_review', 0) ~ ' need attention · ' ~ questions ~ ' question(s)', '/review') }}
+      {{ ui.tile('Sales ' ~ month ~ ' (net)', inc.net_sales|money, 'food cost ' ~ (inc.food_cost_pct if inc.food_cost_pct is not none else '–') ~ '% (watch 25-35%)', '/reports') }}
+      {{ ui.tile('Net income ' ~ month, inc.net_income|money, 'year to date ' ~ ytd.net_income|money, '/reports') }}
+      {{ ui.tile('Bank (GL)', bank|money, 'cash ' ~ cash|money ~ ' · card owed ' ~ card|money ~ ' · sales tax owed ' ~ sales_tax|money, '/reconcile') }}
+    </div>
+  {% endif %}
+{% endcall %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3 shadow-sm"><div class="card-header">Work to do</div>
+      <ul class="list-group list-group-flush sba-list">
+        <li class="list-group-item d-flex justify-content-between"><span>Files waiting for extraction or failed</span><a href="/inbox">{{ files_new }}</a></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Documents to propose</span><a href="/review">{{ counts.get('extracted', 0) }}</a></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Proposals to review</span><a href="/review">{{ counts.get('proposed', 0) }}</a></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Proposals that need attention (failed checks)</span><a href="/review?filter=attention">{{ counts.get('needs_review', 0) }}</a></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Questions from the Bookkeeper</span><a href="/review?filter=questions">{{ questions }}</a></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Rules suggested from your feedback</span><span>{{ rules_pending }}</span></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Posted · linked · rejected</span><span>{{ counts.get('posted', 0) }} · {{ counts.get('support', 0) }} · {{ counts.get('rejected', 0) }}</span></li>
+      </ul></div>
+    <div class="card shadow-sm"><div class="card-header">Unmatched items older than 45 days</div>
+      {% if unmatched %}<div class="table-responsive"><table class="table table-sm table-striped table-hover mb-0">
+        <thead><tr><th>Date</th><th>Account</th><th>Party</th><th class="num">Amount</th></tr></thead>
+        <tbody>{% for i in unmatched %}<tr><td>{{ i.date }}</td><td>{{ i.account }}</td><td>{{ i.party }}</td><td class="num">{{ i.amount|money }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="card-body small text-body-secondary">None - every receipt, payout and check has met its statement line.</div>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3 shadow-sm"><div class="card-header d-flex justify-content-between"><span>Next tax dates</span><a href="/taxes" class="small">Taxes</a></div>
+      <div class="table-responsive"><table class="table table-sm table-striped table-hover table-bordered sba-card-table mb-0">
+        <thead class="sba-head-yellow"><tr><th>Date</th><th>What is due</th><th>Tax form</th></tr></thead>
+        <tbody>{% for c in calendar %}<tr><td class="text-nowrap">{{ c.date }}</td><td>{{ c.what }}</td>
+          <td>{{ c.form or '–' }}<div class="small text-body-secondary">{{ c.who }}</div></td></tr>{% endfor %}
+        </tbody></table></div></div>
+    <div class="card shadow-sm"><div class="card-body small text-body-secondary">
+      Claude usage in these books: {{ cost[1] }} call(s), ${{ '%.2f'|format(cost[0]) }} at API rates (on your Claude Code plan).
+      Tax worksheets are drafts built from the books for review with your CPA - nothing is filed.
+      <a href="/api/backup">Download a backup</a>.
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}User's guide{% endblock %}
+{% block head %}<style>
+  .guide h2 { font-size: 1.2rem; font-weight: 600; scroll-margin-top: calc(var(--sba-sticky-top) + 16px); }
+  .guide h3 { font-size: 1rem; font-weight: 600; margin-top: 1rem; }
+  .guide section.card { margin-bottom: 1.25rem; }
+  .guide .step { display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem;
+    border-radius: 50%; background: var(--sba-brand-navy); color: var(--sba-brand-yellow); font-weight: 700; font-size: .85rem;
+    margin-right: .5rem; flex: none; }
+  .guide-toc a { display: block; padding: .2rem .5rem; border-radius: .3rem; text-decoration: none; color: var(--bs-body-color); }
+  .guide-toc a:hover { background: var(--sba-head-bg); }
+  .guide kbd { font-size: .8em; }
+  .guide .screen { font-weight: 600; white-space: nowrap; }
+</style>{% endblock %}
+
+{% macro go(href, label) %}<a class="screen" href="{{ href }}">{{ label }}</a>{% endmacro %}
+
+{% block content %}
+{% call(part) ui.overview("User's guide", "how to keep the books of a small business - in our case - " ~ profile.name ~ " with this app: set up the business, add your paperwork, review what Claude proposes, reconcile, and produce the financial statements and draft tax worksheets.", inline=True) %}
+  {% if part == 'actions' %}
+    <button class="btn btn-outline-secondary bg-body" onclick="print()">Print</button>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Books open now', 'Sandbox' if biz.is_sandbox else 'Live books', biz.name if biz.is_sandbox else 'the real business') }}
+      {{ ui.tile('Step 1: business set up', '✓ done' if status.profile_done and status.opening else '✗ to do', 'card / bank last 4 and opening balances', '/setup', 'good' if status.profile_done and status.opening else 'bad') }}
+      {{ ui.tile('Documents added', status.files, status.to_review ~ ' waiting on Review', '/review') }}
+      {{ ui.tile('Months closed', status.closed, 'after reconciling', '/reconcile') }}
+    </div>
+  {% endif %}
+{% endcall %}
+
+<div class="row g-4 guide">
+  <!-- table of contents -->
+  <div class="col-lg-3 d-none d-lg-block">
+    <nav class="sticky-col card shadow-sm guide-toc small" aria-label="Contents">
+      <div class="card-header">Contents</div>
+      <div class="card-body py-2">
+        <a href="#start">Before you start</a>
+        <a href="#setup"><span class="step">1</span>Set up your business</a>
+        <a href="#add"><span class="step">2</span>Add your paperwork</a>
+        <a href="#review"><span class="step">3</span>Review and post</a>
+        <a href="#check"><span class="step">4</span>Check any document</a>
+        <a href="#ledger"><span class="step">5</span>The ledger</a>
+        <a href="#reconcile"><span class="step">6</span>Reconcile and close</a>
+        <a href="#reports"><span class="step">7</span>Financial statements</a>
+        <a href="#taxes"><span class="step">8</span>Tax worksheets</a>
+        <a href="#routine">Monthly and yearly routine</a>
+        <a href="#practice">Practise with test data</a>
+        <a href="#safety">Safety and backups</a>
+        <a href="#faq">Questions and problems</a>
+        <a href="#words">Words used</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="col-lg-9">
+
+  <section class="card shadow-sm" id="start"><div class="card-header">Before you start</div><div class="card-body">
+    <p>The app keeps the books of a take-out and delivery pizza shop organised as a single-member LLC. The work is split in three:</p>
+    <ul>
+      <li><b>You</b> add the paperwork (scans and exports) and approve every entry. Nothing is posted without you.</li>
+      <li><b>Claude</b> reads each document and <i>proposes</i> journal entries, with its reasons and any questions.</li>
+      <li><b>The app's code</b> checks every figure, posts what you approve into a strict double-entry ledger, and computes the
+        financial statements and tax worksheets. Claude never writes a statement or a tax figure.</li>
+    </ul>
+    <h3>Live books or a sandbox?</h3>
+    <p>The dropdown on the right of the menu chooses which books are open. <b>Live books</b> are your real business. A
+      <b>Sandbox</b> is a practice copy filled with made-up test documents; an orange bar under the top bar reminds you. Each set
+      of books is completely separate: nothing you do in a sandbox touches the live books, and the live books refuse test files.
+      <b>Make sure the dropdown says <i>Live books</i> before you enter real paperwork.</b></p>
+    <h3>Starting the app</h3>
+    <p class="mb-0">In a command window: <code>cd C:\Daya\RAGchamp\SMALL-BIZ-ACCTG\Web-App</code> then <code>python app.py</code>,
+      and open <a href="/">http://127.0.0.1:5050</a>. The Claude Code app must be logged in on this computer.</p>
+  </div></section>
+
+  <section class="card shadow-sm" id="setup"><div class="card-header"><span class="step">1</span>Set up your business (once) — {{ go('/setup', 'Setup') }}</div><div class="card-body">
+    <ol>
+      <li><b>Business profile.</b> Check the name, address, owner, EIN (kept on this computer, never sent to Claude), CT tax
+        registration number, the date the books start and the tax year. Enter the <b>last 4 digits</b> of the business credit
+        card(s) and the business checking account: this is how a business card is told apart from a personal one. Set the sales
+        tax filing frequency (monthly, quarterly or annual, as CT DRS assigned). Click <b>Save profile</b>.</li>
+      <li><b>Opening balances.</b> Enter what the business had and owed on the start date: the bank balance, register and petty
+        cash, inventory, equipment at cost and its accumulated depreciation, the credit card balance, sales tax owed, loans.
+        Click <b>Post opening balances</b>. Do this <b>before</b> adding paperwork, or the bank will never reconcile.
+        <span class="text-body-secondary">Made a mistake? Reverse the opening entry on the Ledger and post them again.</span></li>
+      <li><b>Chart of accounts.</b> The pizza-shop accounts are ready (sales, food cost, packaging, wages, rent, card fees …),
+        each mapped to its Schedule C line. Add an account only if you need one; its description matters, because Claude reads
+        it to choose accounts. Untick <i>Active</i> to stop using one.</li>
+      <li><b>Vendor rules</b> (optional). Standing instructions such as <i>"Restaurant Depot: book paper goods to 5030"</i>.
+        Usually they come from your feedback on the Review screen (step 3).</li>
+    </ol>
+    <div class="sba-note small">The <b>Setup</b> tile at the top of this page turns ✓ when the card and bank digits and the opening
+      balances are in.</div>
+  </div></section>
+
+  <section class="card shadow-sm" id="add"><div class="card-header"><span class="step">2</span>Add your paperwork — {{ go('/inbox', 'Inbox') }}</div><div class="card-body">
+    <p>What to add, as <b>PDF</b> scans or downloads: store receipts and vendor invoices, credit card and bank statements,
+      checks you wrote or received, handwritten cash sheets, Square sales reports, DoorDash / Uber Eats / Grubhub statements and
+      payroll reports. Square, bank and card exports can also be added as <b>CSV</b> (read exactly, without Claude).</p>
+    <p>Two ways in:</p>
+    <ul>
+      <li><b>Upload</b>: choose the files and click <b>Add</b>. Leave <i>run the Bookkeeper after extraction</i> ticked.</li>
+      <li><b>Inbox folder</b>: drop the files into <code>{{ inbox_dir }}</code> and click <b>↻ Process the inbox</b>. Added files
+        move to <code>processed\</code>; refused ones go to <code>refused\</code> with the reason.</li>
+    </ul>
+    <p>The app then, for each file: refuses it if it was already added (under any name); makes page images; asks Claude to find
+      every document in it (one page can hold several receipts) and read it; checks the arithmetic (items + tax = total, opening +
+      transactions = closing …); and asks Claude to propose the entries. A small <i>Working…</i> box at the bottom right shows the
+      progress.</p>
+    <h3>Tips</h3>
+    <ul class="mb-0">
+      <li>Add things <b>in the order they happened</b>: receipts during the month, the bank and card statements after it ends.</li>
+      <li>A faint or small scan: click <b>Re-extract (higher dpi)</b> on its row.</li>
+      <li>Split PDFs longer than 12 pages before adding them.</li>
+    </ul>
+  </div></section>
+
+  <section class="card shadow-sm" id="review"><div class="card-header"><span class="step">3</span>Review and post — {{ go('/review', 'Review') }}</div><div class="card-body">
+    <p>Each document waits here with the scan in the middle and Claude's <b>proposed entries</b> on the right: the accounts,
+      debits and credits, <i>Why</i> (its reason), any <span class="text-warning-emphasis">❓ questions</span>, any
+      <span class="text-danger">✗ failed checks</span> and <span class="text-success">⇄ match hints</span>.</p>
+    <table class="table table-sm table-bordered table-striped">
+      <thead class="sba-head-yellow"><tr><th>Button</th><th>Key</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><b>Accept</b></td><td><kbd>A</kbd></td><td>Posts the entries to the ledger (after checking them again).</td></tr>
+        <tr><td><b>Edit</b></td><td><kbd>E</kbd></td><td>Change an account or amount, add a line; then Accept.</td></tr>
+        <tr><td><b>Feedback…</b></td><td><kbd>F</kbd></td><td>Tell Claude in plain words what is wrong (<i>"the TV was personal"</i>, <i>"$40 was cleaning supplies"</i>); it makes a new proposal. If it asks <i>Remember this rule?</i>, <b>Yes, always</b> saves a vendor rule.</td></tr>
+        <tr><td><b>Reject</b></td><td></td><td>Not a business document, a duplicate, unreadable … (you give the reason).</td></tr>
+        <tr><td>Next / previous</td><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Move through the queue.</td></tr>
+      </tbody>
+    </table>
+    <ul class="mb-0">
+      <li><b>Bulk accept</b> posts every proposal that is high-confidence, passed every check and has no question. Look at the
+        <i>Questions</i> and <i>Attention</i> filters for the rest.</li>
+      <li>A figure Claude could not read shows as <code>[?]</code>: open <i>Extracted data and checks</i>, compare with the
+        scan, correct it and tick <i>I checked the flagged figures</i> before accepting.</li>
+      <li><b>Review in order.</b> A card purchase is first booked to <i>2150 Purchases awaiting statement</i>; when the card
+        statement comes, its line settles that amount instead of counting the expense again. The same idea keeps Square
+        payouts, platform payouts, deposits and payroll from being counted twice.</li>
+    </ul>
+  </div></section>
+
+  <section class="card shadow-sm" id="check"><div class="card-header"><span class="step">4</span>Check any document — {{ go('/doc-review', 'Input docs') }}</div><div class="card-body">
+    <p>To see what became of documents, live or practice: tick <b>Live documents</b> and/or <b>Sandbox documents</b>, tick the
+      documents and click <b>Review</b>. Each one shows the scan next to the data read from it, its <b>ledger</b> lines, the
+      <b>financial statement</b> lines they feed and the <b>tax</b> lines they reach.</p>
+    <p class="mb-0">If something is wrong, tick what and write why, then <b>Save feedback</b> (kept as a file in
+      <code>Web-App\feedback\</code>). Optionally <b>re-process</b>: re-propose with your feedback, read the scan again, or
+      correct the figures yourself. A posted document is first un-posted by reversing its entries, and the new proposal waits
+      on the Review screen for you to accept.</p>
+  </div></section>
+
+  <section class="card shadow-sm" id="ledger"><div class="card-header"><span class="step">5</span>The ledger — {{ go('/ledger', 'Ledger') }}</div><div class="card-body">
+    <ul>
+      <li>Every posted entry, newest first, with a link to its document and scan. Filter by dates, account or text; choosing an
+        account also shows its running balance.</li>
+      <li><b>Posted entries are never edited or deleted.</b> To correct one, click <b>Reverse</b> (a mirror-image entry cancels
+        it), then post the right entry or send the document back through Review. Reversed something by mistake? Click
+        <b>Reverse</b> on the reversal itself and the original is posted again.</li>
+      <li><b>New manual journal entry</b> is for things with no document: the year-end inventory count, corrections. The panel
+        also suggests the month's <b>depreciation</b> for equipment you capitalised (items of $2,500 or more); click <b>Post it</b>.</li>
+      <li><b>{{ go('/ledger-trail', 'Ledger trail') }}</b> lists every change ever made to the ledger (posted, reversed, reinstated, months
+        closed and reopened), with when and from which screen. It cannot be edited.</li>
+    </ul>
+  </div></section>
+
+  <section class="card shadow-sm" id="reconcile"><div class="card-header"><span class="step">6</span>Reconcile and close the month — {{ go('/reconcile', 'Reconcile') }}</div><div class="card-body">
+    <p>After the month's bank and card statements are reviewed, pick the month. The app compares each statement's closing balance
+      with the ledger (1010 bank, 2100 card) and lists the <b>open items</b> still waiting for a statement line.</p>
+    <ul class="mb-0">
+      <li>Both ✓ → click <b>Close</b>. Nothing more can be posted into a closed month.</li>
+      <li>A difference usually means a document is still on the Review screen, a statement line has no entry, or a statement is
+        missing. Fix it, or <b>close with an override note</b> explaining why.</li>
+      <li>A late receipt for a closed month? <b>Reopen</b> it (you give the reason; it is recorded), post, and close again.</li>
+    </ul>
+  </div></section>
+
+  <section class="card shadow-sm" id="reports"><div class="card-header"><span class="step">7</span>Financial statements — {{ go('/reports', 'Reports') }}</div><div class="card-body">
+    <p>Choose a report and the dates, click <b>Show</b>; <b>CSV</b> downloads it for a spreadsheet, <b>Print</b> prints it.</p>
+    <table class="table table-sm table-bordered table-striped mb-2">
+      <thead class="sba-head-yellow"><tr><th>Report</th><th>Answers</th></tr></thead>
+      <tbody>
+        <tr><td>Income statement</td><td>Did we make money? Sales, cost of goods sold with the <b>food cost %</b> (watch 25–35%), expenses, net income. Option: compare with the prior year.</td></tr>
+        <tr><td>Balance sheet</td><td>What the business owns and owes on a date, and the owner's equity.</td></tr>
+        <tr><td>Cash flow</td><td>Where the cash came from and went: operating, investing, financing.</td></tr>
+        <tr><td>Owner's equity</td><td>Contributions, net income and draws over the period.</td></tr>
+        <tr><td>Trial balance, General ledger</td><td>Every account's balance; every line behind it (each links to its document).</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0 small text-body-secondary">Each report checks itself (✓ the balance sheet balances, ✓ ending cash ties to the
+      bank and cash accounts, ✓ debits equal credits). The figures are only as complete as the paperwork posted, so reconcile first.</p>
+  </div></section>
+
+  <section class="card shadow-sm" id="taxes"><div class="card-header"><span class="step">8</span>Tax worksheets — {{ go('/taxes', 'Taxes') }}</div><div class="card-body">
+    <div class="sba-note small mb-2"><b>Connecticut only.</b> The tax worksheets assume the small business is based solely in
+      Connecticut: it sells, collects sales tax and owes state income tax only in CT (Hartford here), with no locations, sales
+      tax registrations or employees in other states. A business that also operates elsewhere needs those states' returns
+      prepared separately with the CPA.</div>
+    <div class="sba-note small mb-3"><b>Drafts, not filings.</b> The app prepares worksheets from your books for you and your CPA
+      to review. Nothing is filed or paid by the app. The tax rules (rates, thresholds) are in <code>tax_rules\&lt;year&gt;\</code>
+      and should be checked against each year's forms.</div>
+    <table class="table table-sm table-bordered table-striped mb-2">
+      <thead class="sba-head-yellow"><tr><th>Tab</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td>CT sales tax (OS-114)</td><td>Each month's return: gross receipts, platform (marketplace) sales deducted, discounts, taxable sales at 7.35%, tax due and use tax, compared with the tax your books collected. <b>Save this worksheet</b> keeps a snapshot; then file and pay on myconneCT.</td></tr>
+        <tr><td>Schedule C / SE</td><td>The business profit for the owner's Form 1040, line by line with the accounts behind each, cost of goods sold (Part III), self-employment tax, an estimated-tax helper and the questions to settle before filing.</td></tr>
+        <tr><td>Fixed assets (4562)</td><td>Equipment placed in service this year, for the CPA's depreciation choices.</td></tr>
+        <tr><td>1099-NEC</td><td>Contractors paid by check or bank transfer; tick who needs a 1099.</td></tr>
+        <tr><td>Connecticut</td><td>The figures for the owner's CT-1040.</td></tr>
+        <tr><td>Calendar</td><td>Every filing and payment date of the year (the next ones are also on the Dashboard).</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0">At year end, click <b>Download the CPA package</b>: a zip with the general ledger, trial balance, statements,
+      Schedule C/SE, the twelve OS-114 worksheets, the fixed-asset and 1099 lists and the open questions.</p>
+  </div></section>
+
+  <section class="card shadow-sm" id="routine"><div class="card-header">Monthly and yearly routine</div><div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6"><h3 class="mt-0">Every week</h3><ul class="mb-0">
+        <li>Scan receipts, invoices, checks and cash sheets; add them (step 2).</li>
+        <li>Add the Square and delivery-platform reports.</li>
+        <li>Review and accept (step 3).</li></ul></div>
+      <div class="col-md-6"><h3 class="mt-0">After each month ends</h3><ul class="mb-0">
+        <li>Add the bank and card statements; review them.</li>
+        <li>Reconcile and close the month (step 6).</li>
+        <li>Post the depreciation suggestion if you have equipment.</li>
+        <li>Look at the Income statement (food cost %).</li>
+        <li>Open the month's OS-114, save it, file and pay by the due date.</li></ul></div>
+      <div class="col-md-6"><h3 class="mt-0">Year end</h3><ul class="mb-0">
+        <li>Count the inventory; post it as a manual entry.</li>
+        <li>Review Schedule C / SE, the 1099 list and the questions.</li>
+        <li>Download the CPA package and a backup.</li></ul></div>
+      <div class="col-md-6"><h3 class="mt-0">Watch the Dashboard for</h3><ul class="mb-0">
+        <li>Documents to review and questions from the Bookkeeper.</li>
+        <li>Unmatched items older than 45 days (a statement line never arrived).</li>
+        <li>The next tax dates.</li></ul></div>
+    </div>
+  </div></section>
+
+  <section class="card shadow-sm" id="practice"><div class="card-header">Practise with test data — {{ go('/test-data', 'Test data') }}</div><div class="card-body">
+    <ol class="mb-0">
+      <li>Pick a sandbox in the menu's dropdown (e.g. <i>Sandbox: jan-2026-scanned</i>, a whole made-up January); the orange bar appears.</li>
+      <li>{{ go('/inbox', 'Inbox') }} → <b>Load the sandbox's generated files</b>. This empties the sandbox and adds its files again, so
+        you can review them yourself.</li>
+      <li>Go through steps 3 to 8 as above. On <b>Test data → Answer key</b> you can compare with what should have happened.</li>
+      <li>Switch back with <b>Back to the live books</b> in the orange bar.</li>
+    </ol>
+  </div></section>
+
+  <section class="card shadow-sm" id="safety"><div class="card-header">Safety and backups</div><div class="card-body">
+    <ul class="mb-0">
+      <li>Everything stays on this computer, in <code>Web-App\data\</code>. Claude sees the document images and figures, never
+        the EIN or full card and account numbers (only the last 4 digits).</li>
+      <li>Download a <b>backup</b> regularly: the link is at the bottom of the {{ go('/', 'Dashboard') }}, or on {{ go('/setup', 'Setup') }}.</li>
+      <li>Nothing posted can be silently changed: corrections are reversals, months can be closed, and the
+        {{ go('/ledger-trail', 'Ledger trail') }} and the Setup screen's audit log record every change.</li>
+    </ul>
+  </div></section>
+
+  <section class="card shadow-sm" id="faq"><div class="card-header">Questions and problems</div><div class="card-body">
+    <table class="table table-sm table-bordered table-striped mb-0">
+      <thead class="sba-head-yellow"><tr><th>If …</th><th>then …</th></tr></thead>
+      <tbody>
+        <tr><td>"… was already added on …"</td><td>The same file is in the books already; nothing to do.</td></tr>
+        <tr><td>"… is SYNTHETIC TEST DATA …"</td><td>A practice file can't go into the live books. Open a sandbox for practice.</td></tr>
+        <tr><td>A file shows <i>failed</i> on the Inbox</td><td>Read the error under its name; click <b>Extract</b> or <b>Re-extract (higher dpi)</b>.</td></tr>
+        <tr><td>Accept says "confirm the flagged figures first"</td><td>Compare the red figures with the scan, correct them if needed, tick <i>I checked the flagged figures</i>.</td></tr>
+        <tr><td>Accept says "no longer passes the checks"</td><td>Something was posted meanwhile; click <b>Refresh ↻</b> on the proposal.</td></tr>
+        <tr><td>"… is closed"</td><td>The month is closed: reopen it on Reconcile (with the reason), post, close again.</td></tr>
+        <tr><td>The card or bank won't reconcile</td><td>Check the Review queue, the open items list and that every statement of the month was added.</td></tr>
+        <tr><td>An expense seems counted twice</td><td>Use {{ go('/doc-review', 'Input docs') }} on the receipt and the statement: the clearing line should say <i>settled by …</i>.</td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section class="card shadow-sm" id="words"><div class="card-header">Words used</div><div class="card-body">
+    <table class="table table-sm table-bordered table-striped mb-0">
+      <thead class="sba-head-yellow"><tr><th>Word</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Journal entry</td><td>A dated record of one transaction: debits and credits to accounts that are always equal.</td></tr>
+        <tr><td>Debit / credit</td><td>The two sides of an entry. An expense or a bank deposit is a debit; a sale, a loan or a card balance owed is a credit.</td></tr>
+        <tr><td>Ledger</td><td>All posted entries; each account's running balance.</td></tr>
+        <tr><td>Proposal</td><td>Entries Claude suggests for a document, waiting for your approval.</td></tr>
+        <tr><td>Clearing account</td><td>A holding account (2150, 1100, 1110, 1050, 2300) that keeps one amount from being counted twice until the statement or deposit arrives.</td></tr>
+        <tr><td>Open item</td><td>An amount still waiting in a clearing account.</td></tr>
+        <tr><td>Reversal</td><td>A mirror-image entry that cancels a posted entry.</td></tr>
+        <tr><td>Reconcile</td><td>Prove the books agree with the bank and card statements.</td></tr>
+        <tr><td>Accrual basis</td><td>Income and costs are counted when they happen, not when the cash moves.</td></tr>
+        <tr><td>Food cost %</td><td>Food and drink purchases as a share of net sales.</td></tr>
+        <tr><td>OS-114</td><td>Connecticut's sales and use tax return.</td></tr>
+        <tr><td>Schedule C / SE</td><td>The federal forms for the business profit and the owner's self-employment tax.</td></tr>
+        <tr><td>Sandbox</td><td>A separate practice copy of the books with made-up documents.</td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  </div>
+</div>
+{% endblock %}

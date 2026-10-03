@@ -1,0 +1,7 @@
+# Payroll from the provider's report (plan §15.4, decision D5)
+- id: payroll-semi-monthly
+  title: A payroll provider report with tips paid through payroll, and its bank debit
+  area: Payroll
+  events:
+    - {type: square_day, date: 2026-01-10, instore: 1500.00, tips: 410.00, cash: 300.00}
+    - {type: payroll, pay_date: 2026-01-15, start: 2026-01-01, end: 2026-01-15, gross: "6200.00", tips_paid: "410.00", withholding: "905.20", employer_taxes: "552.30"}

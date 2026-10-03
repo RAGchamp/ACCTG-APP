@@ -1,0 +1,14 @@
+{
+ "doc_type": "platform_statement",
+ "platform": "DoorDash",
+ "period_start": "2026-01-05",
+ "period_end": "2026-01-11",
+ "payout_date": "2026-01-13",
+ "subtotal": "2140.00",
+ "tax_collected_by_platform": "157.29",
+ "commission": "428.00",
+ "marketing_fees": "0.00",
+ "promotions": "35.00",
+ "adjustments": "-12.50",
+ "payout": "1664.50"
+}

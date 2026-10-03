@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Test data{% endblock %}
+{% block content %}
+{% set ns = namespace(scen=0) %}{% for area, items in areas.items() %}{% set ns.scen = ns.scen + items|length %}{% endfor %}
+{% call(part) ui.overview('Synthetic test data', 'Realistic scanned documents and exports for every scenario, with the answer key; each set goes into its own sandbox, never the live books (plan §15).') %}
+  {% if part == 'actions' %}
+    <a class="btn btn-outline-secondary bg-body" href="?coverage=1">Feature coverage</a>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Scenarios', ns.scen, areas|length ~ ' areas') }}
+      {{ ui.tile('Simulation presets', presets|length, 'whole consistent periods') }}
+      {{ ui.tile('Sandboxes', boxes|length, 'pick one in the top-right dropdown') }}
+      {% if results %}{{ ui.tile('Last scorecard', 'PASS' if results[0].passed else 'FAIL', results[0].sandbox ~ ' · ' ~ results[0].mode, '/test-data/results/' ~ results[0].html, 'good' if results[0].passed else 'bad') }}
+      {% else %}{{ ui.tile('Last scorecard', '–', 'no evaluations yet') }}{% endif %}
+    </div>
+  {% endif %}
+{% endcall %}
+
+{% if coverage %}
+<div class="card mb-3"><div class="card-header">Feature coverage - {{ coverage.scenarios|length }} scenarios, {{ coverage.missing|length }} feature(s) without a scenario</div>
+  <div class="card-body small"><div class="row">{% for f, label in coverage.features.items() %}
+    <div class="col-md-4">{{ '✓' if coverage.covered.get(f) else '✗' }} <b>{{ f }}</b> {{ label }} <span class="text-body-secondary">({{ coverage.covered.get(f, [])|length }})</span></div>{% endfor %}</div></div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <form id="gen" class="card">
+      <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+        <b class="me-auto">Generate</b>
+        <label class="small">Difficulty <select name="difficulty" class="form-select form-select-sm d-inline w-auto">
+          <option value="">scenario default</option>{% for d in ['clean','scanned','messy','adversarial','photo'] %}<option>{{ d }}</option>{% endfor %}</select></label>
+        <label class="small">Seed <input name="seed" class="form-control form-control-sm d-inline" style="width:5em" value="1"></label>
+        <label class="small">Claude <select name="ai_mode" class="form-select form-select-sm d-inline w-auto">
+          <option value="replay">replayed (free)</option><option value="live">live (real calls, costs usage)</option></select></label>
+        <label class="small"><input type="checkbox" name="evaluate" checked> evaluate</label>
+        <button class="btn btn-sm btn-primary" type="submit">Generate</button>
+      </div>
+      <div class="card-body small">
+        <p class="mb-2"><b>Business simulation</b> (a whole consistent period):
+          {% for name, p in presets.items() %}<label class="me-3"><input type="radio" name="preset" value="{{ name }}"> {{ name }} <span class="text-body-secondary">- {{ p.title }}</span></label>{% endfor %}
+          <label><input type="radio" name="preset" value="" checked> none</label></p>
+        <p class="mb-1"><b>Scenarios</b> <a href="#" onclick="document.querySelectorAll('.sc').forEach(c => c.checked = true); return false">all</a> ·
+          <a href="#" onclick="document.querySelectorAll('.sc').forEach(c => c.checked = false); return false">none</a></p>
+        {% for area, items in areas.items() %}
+        <div class="mb-2"><div class="fw-semibold">{{ area }}</div>
+          {% for s in items %}<div class="form-check"><input class="form-check-input sc" type="checkbox" value="{{ s.id }}" id="s-{{ s.id }}">
+            <label class="form-check-label" for="s-{{ s.id }}"><span class="mono">{{ s.id }}</span> - {{ s.title }}{% if s.difficulty %} <span class="badge text-bg-light border">{{ s.difficulty }}</span>{% endif %}</label></div>{% endfor %}
+        </div>{% endfor %}
+      </div>
+    </form>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card mb-3"><div class="card-header">Sandboxes ({{ boxes|length }})</div>
+      <div class="table-responsive"><table class="table table-sm table-striped table-hover small mb-0 align-middle">
+      {% for s in boxes %}<tr><td><b>{{ s.name }}</b><div class="text-body-secondary">{{ s.files }} files · {{ s.docs }} docs, {{ s.posted }} booked · {{ s.difficulty }} · seed {{ s.seed }}</div></td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-outline-primary" onclick="switchBusiness('{{ s.name }}')">Open</button>
+          <a class="btn btn-sm btn-outline-secondary" href="/test-data/sandbox/{{ s.name }}">Answer key</a>
+          <button class="btn btn-sm btn-outline-success" onclick="evaluateBox('{{ s.name }}')">Evaluate</button>
+          <select class="form-select form-select-sm d-inline w-auto" onchange="run('/api/testdata/sandbox/{{ s.name }}/mode', {mode: this.value}, null, false)">
+            <option value="replay" {{ 'selected' if s.ai_mode == 'replay' }}>replay</option><option value="live" {{ 'selected' if s.ai_mode == 'live' }}>live</option></select>
+          <button class="btn btn-sm btn-link text-danger" onclick="if(confirm('Delete sandbox {{ s.name }}?')) run('/api/testdata/sandbox/{{ s.name }}/delete', {})">delete</button></td></tr>
+      {% else %}<tr><td class="text-body-secondary">No sandboxes yet.</td></tr>{% endfor %}
+      </table></div></div>
+
+    <div class="card"><div class="card-header">Scorecards</div>
+      <div class="table-responsive"><table class="table table-sm table-striped table-hover small mb-0">
+      {% for r in results %}<tr><td>{{ r.at[5:16].replace('T', ' ') }}</td><td><a href="/test-data/results/{{ r.html }}" target="_blank">{{ r.sandbox }}</a></td>
+        <td>{{ r.mode }}</td><td>{% if r.passed %}<span class="text-success fw-semibold">PASS</span>{% else %}<span class="text-danger fw-semibold">FAIL</span>{% endif %}</td>
+        <td class="text-body-secondary">{{ r.stages.propose.entries_ok }}/{{ r.stages.propose.docs }} entries · {{ r.stages.extract.silently_wrong }} silent</td></tr>
+      {% else %}<tr><td class="text-body-secondary">No evaluations yet.</td></tr>{% endfor %}
+      </table></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+document.getElementById('gen').onsubmit = e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const data = { difficulty: f.get('difficulty'), seed: f.get('seed'), ai_mode: f.get('ai_mode'), evaluate: !!f.get('evaluate'),
+    preset: f.get('preset'), scenarios: [...document.querySelectorAll('.sc:checked')].map(c => c.value) };
+  if (data.ai_mode === 'live' && data.evaluate && !confirm('Live mode calls Claude for every document (costs usage on your plan). Continue?')) return;
+  run('/api/testdata/generate', data, 'Generated');
+};
+function evaluateBox(name) {
+  run('/api/testdata/evaluate', { sandbox: name }, 'Evaluation finished');
+}
+</script>{% endblock %}

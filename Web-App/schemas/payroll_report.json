@@ -1,0 +1,13 @@
+{
+ "doc_type": "payroll_report",
+ "provider": "Gusto",
+ "pay_date": "2026-01-15",
+ "period_start": "2026-01-01",
+ "period_end": "2026-01-15",
+ "gross_wages": "6200.00",
+ "tips_paid": "410.00",
+ "employee_withholding": "905.20",
+ "net_pay": "5294.80",
+ "employer_taxes": "552.30",
+ "total_debit": "6752.30"
+}

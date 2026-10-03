@@ -1,0 +1,38 @@
+# Review and feedback (plan §15.4)
+- id: review-vendor-rule
+  title: Feedback creates a vendor rule; the next CVS receipt is booked by the rule
+  area: Review and feedback
+  events:
+    - type: purchase
+      date: 2026-01-07
+      vendor: CVS
+      payment: cash
+      feedback: "CVS purchases are always cleaning supplies for the shop - book them to 6310."
+      rule: {vendor: CVS, rule: "Book CVS purchases to 6310 Cleaning & kitchen supplies.", account: "6310"}
+      items: [{desc: DISINFECTANT WIPES, amount: 11.49, account: "6310", first_account: "6900", taxable: true}]
+    - type: purchase
+      date: 2026-01-21
+      vendor: CVS
+      payment: cash
+      items: [{desc: GLOVES NITRILE 100CT, amount: 13.99, account: "6310", taxable: true}]
+
+- id: review-reject-not-business
+  title: A personal receipt uploaded by mistake -> rejected as not business
+  area: Review and feedback
+  events:
+    - {type: purchase, date: 2026-01-11, vendor: Toys R Fun, payment: cash, expect: reject,
+       owner: [{action: reject, reason: "personal purchase, not business"}],
+       items: [{desc: LEGO SET, amount: 59.99, account: "3100", taxable: true}]}
+
+- id: review-question-answer
+  title: Claude asks a question; the owner's answer settles the account
+  area: Review and feedback
+  events:
+    - type: purchase
+      date: 2026-01-13
+      vendor: Amazon
+      payment: card
+      first_confidence: low
+      questions: ["Were the 2 speakers for the dining room (business) or personal?"]
+      feedback: "Business - they are for music in the dining room."
+      items: [{desc: BLUETOOTH SPEAKER X2, amount: 119.98, account: "6320", first_account: "6900", taxable: true}]

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Ledger{% endblock %}
+{% block content %}
+{% call(part) ui.overview('General Ledger / Journal', start ~ ' to ' ~ end ~ (' · account ' ~ account if account else '') ~ (' · "' ~ q ~ '"' if q else '') ~ ' · posted entries are never changed, only reversed') %}
+  {% if part == 'actions' %}
+  <form class="d-flex flex-wrap gap-2" method="get">
+    <input class="form-control form-control-sm w-auto" type="date" name="start" value="{{ start }}">
+    <input class="form-control form-control-sm w-auto" type="date" name="end" value="{{ end }}">
+    <select class="form-select form-select-sm w-auto" name="account"><option value="">All accounts</option>
+      {% for a in accounts %}<option value="{{ a.number }}" {{ 'selected' if account == a.number }}>{{ a.number }} {{ a.name }}</option>{% endfor %}</select>
+    <input class="form-control form-control-sm w-auto" name="q" value="{{ q }}" placeholder="memo / party">
+    <button class="btn btn-sm btn-primary">Show</button>
+  </form>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Entries in the period', totals.entries, totals.reversed ~ ' reversed (shown struck through)') }}
+      {{ ui.tile('Total debits', totals.debit|money, 'all accounts') }}
+      {{ ui.tile('Total credits', totals.credit|money, 'all accounts') }}
+      {{ ui.tile('Debits = credits', '✓ balanced' if totals.debit == totals.credit else '✗ not balanced', 'every entry balances to the cent', None, 'good' if totals.debit == totals.credit else 'bad') }}
+    </div>
+  {% endif %}
+{% endcall %}
+
+{% if gl %}{% for a in gl %}
+<div class="card shadow-sm mb-3"><div class="card-header">{{ a.account }} {{ a.name }} <span class="fw-normal small">· opening {{ a.opening|money }} · closing {{ a.closing|money }}</span></div>
+<div class="table-responsive"><table class="table table-sm table-striped table-hover table-bordered sba-card-table mb-0"><thead class="sba-head-yellow"><tr><th>Date</th><th>Entry</th><th>Memo</th><th>Party</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+{% for l in a.lines %}<tr><td>{{ l.date }}</td><td>#{{ l.entry_id }} {{ l.kind }}</td><td>{{ l.entry_memo }}</td><td>{{ l.party or '' }}</td>
+  <td class="num">{{ l.debit|money(blank_zero=True) }}</td><td class="num">{{ l.credit|money(blank_zero=True) }}</td><td class="num">{{ l.balance|money }}</td></tr>{% endfor %}
+</table></div></div>{% endfor %}{% endif %}
+
+<details class="card shadow-sm my-3"><summary class="card-header">New manual journal entry (depreciation, inventory count, corrections)</summary>
+  <div class="card-body">
+    <div class="row g-2 mb-2"><div class="col-auto"><input id="mdate" type="date" class="form-control form-control-sm" value="{{ end }}"></div>
+      <div class="col"><input id="mmemo" class="form-control form-control-sm" placeholder="memo"></div>
+      <div class="col-auto"><select id="mkind" class="form-select form-select-sm"><option value="manual">manual</option><option value="adjustment">adjustment</option></select></div></div>
+    <table class="table table-sm table-bordered" id="mlines"><thead class="sba-head-yellow"><tr><th>Account</th><th>Debit</th><th>Credit</th><th>Memo</th></tr></thead></table>
+    <button class="btn btn-sm btn-link" onclick="addLine()">+ line</button>
+    <button class="btn btn-sm btn-primary" onclick="postManual()">Post</button> <span id="mbal" class="small"></span>
+    {% if dep %}<hr><div class="small">Suggested straight-line depreciation for {{ end[:7] }}: <b>{{ dep.lines[0].debit_cents|money }}</b>
+      ({% for d in dep.detail %}{{ d.asset }} {{ d.amount|money }}{{ ', ' if not loop.last }}{% endfor %})
+      <button class="btn btn-sm btn-outline-primary ms-2" onclick="run('/api/depreciation', {month: '{{ end[:7] }}'}, 'Depreciation posted')">Post it</button></div>{% endif %}
+  </div>
+</details>
+
+<section class="sba-note mb-3" aria-label="Reversed an entry by mistake?">
+  <div class="fw-semibold mb-1">Reversed an entry by mistake? Reverse the reversal.</div>
+  <ul class="small mb-0 ps-3">
+    <li>Posted entries are never edited or deleted. <b>Reverse</b> posts a mirror-image entry (kind <i>reversal</i>, "of #N")
+      that cancels the original, and the original is shown <s>struck through</s>.</li>
+    <li>To undo a reversal, click <b>Reverse</b> on the <i>reversal</i> row itself. The original entry is posted again as a new
+      entry (same lines, kind and document, marked "undoes #reversal"), and the reversal is struck through too. The books are
+      back where they were; nothing is deleted.</li>
+    <li>Leave the date empty to use the original entry's date (normally right); type a date only to put it elsewhere. A
+      reversal can be undone only once, and the month must be open (reopen it on <a href="/reconcile">Reconcile</a> first).</li>
+    <li>Every step is recorded in the <a href="/ledger-trail">Ledger trail</a>: <i>Reversed</i>, then <i>Reinstated</i>.</li>
+  </ul>
+</section>
+
+<div class="card shadow-sm"><div class="card-header d-flex flex-wrap gap-3 align-items-center">
+  <span>Entries ({{ entries|length }}{{ ', latest 400' if entries|length == 400 }})</span>
+  <a class="small" href="/ledger-trail" title="Every change made to the ledger: postings, reversals, months closed and reopened">Ledger trail →</a></div>
+<div class="table-responsive"><table class="table table-sm table-striped table-hover table-bordered sba-card-table align-middle mb-0">
+<thead class="sba-head-yellow"><tr><th>#</th><th>Date</th><th>Kind</th><th>Memo</th><th>Lines</th><th>Source</th><th></th></tr></thead><tbody>
+{% for e in entries %}
+<tr class="{{ 'text-decoration-line-through text-body-secondary' if e.is_reversed }}">
+  <td>{{ e.id }}</td><td class="text-nowrap">{{ e.date }}</td><td>{{ e.kind }}{% if e.reverses %}<div class="small">{{ 'of' if e.kind == 'reversal' else 'undoes' }} #{{ e.reverses }}</div>{% endif %}</td>
+  <td>{{ e.memo }}</td>
+  <td class="small"><table class="w-100">{% for l in e.lines %}<tr><td>{{ l.account }}</td><td class="text-body-secondary">{{ l.party or '' }} {{ l.memo or '' }}</td>
+    <td class="num">{{ l.debit|money(blank_zero=True) }}</td><td class="num">{{ l.credit|money(blank_zero=True) }}</td></tr>{% endfor %}</table></td>
+  <td class="small">{% if e.document_id %}<a href="/review/{{ e.document_id }}">{{ e.doc_type|doclabel }} #{{ e.document_id }}</a>
+    {% if e.file_id %}· <a href="/files/{{ e.file_id }}/original" target="_blank">image</a>{% endif %}{% endif %}</td>
+  <td>{% if not e.is_reversed %}<button class="btn btn-sm btn-outline-danger" onclick="reverse({{ e.id }}, {{ 'true' if e.kind == 'reversal' else 'false' }}, {{ e.reverses or 'null' }})"
+    title="{{ 'Undo this reversal: entry #' ~ e.reverses ~ ' is posted again' if e.kind == 'reversal' else 'Post the mirror-image entry' }}">Reverse</button>{% endif %}</td>
+</tr>{% else %}<tr><td colspan="7" class="text-body-secondary">No entries in this period.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+const ACCTS = {{ accounts|map(attribute='number')|list|tojson }};
+function addLine() {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input class="form-control form-control-sm acct" list="al"></td><td><input class="form-control form-control-sm dr num" oninput="bal()"></td>
+    <td><input class="form-control form-control-sm cr num" oninput="bal()"></td><td><input class="form-control form-control-sm memo"></td>`;
+  document.getElementById('mlines').appendChild(tr);
+}
+function lines() {
+  return [...document.querySelectorAll('#mlines tr')].slice(1).map(tr => ({ account: tr.querySelector('.acct').value.trim(),
+    debit: tr.querySelector('.dr').value || '0', credit: tr.querySelector('.cr').value || '0', memo: tr.querySelector('.memo').value }))
+    .filter(l => l.account);
+}
+function bal() {
+  const c = v => Math.round(parseFloat(v || 0) * 100) || 0;
+  const ls = lines(); const d = ls.reduce((s, l) => s + c(l.debit), 0), k = ls.reduce((s, l) => s + c(l.credit), 0);
+  document.getElementById('mbal').innerHTML = d === k ? `<span class="text-success">balanced ${(d/100).toFixed(2)}</span>` : `<span class="text-danger">debits ${(d/100).toFixed(2)} ≠ credits ${(k/100).toFixed(2)}</span>`;
+}
+function postManual() {
+  run('/api/entries/manual', { date: document.getElementById('mdate').value, memo: document.getElementById('mmemo').value,
+    kind: document.getElementById('mkind').value, lines: lines() }, 'Posted');
+}
+function reverse(id, isReversal, original) {
+  const date = prompt(isReversal
+    ? `Undo reversal #${id}: entry #${original} is posted again.
+Date (YYYY-MM-DD; empty = the original entry's date):`
+    : 'Date of the reversal (YYYY-MM-DD; empty = the original date):', '');
+  if (date === null) return;
+  run(`/api/entries/${id}/reverse`, { date }, isReversal ? `Reversal undone: entry #${original} is posted again` : 'Reversed');
+}
+addLine(); addLine();
+document.body.insertAdjacentHTML('beforeend', `<datalist id="al">${ACCTS.map(a => `<option value="${a}">`).join('')}</datalist>`);
+</script>{% endblock %}

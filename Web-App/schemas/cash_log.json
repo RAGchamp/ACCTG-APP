@@ -1,0 +1,32 @@
+{
+ "doc_type": "cash_log",
+ "date": "2026-01-14",
+ "entries": [
+  {
+   "description": "walk-in cash sales not rung",
+   "amount": "60.00",
+   "kind": "cash_sale"
+  },
+  {
+   "description": "tax",
+   "amount": "4.41",
+   "kind": "sales_tax"
+  },
+  {
+   "description": "paper towels - CVS",
+   "amount": "8.99",
+   "kind": "petty_expense"
+  },
+  {
+   "description": "tip out drivers",
+   "amount": "45.00",
+   "kind": "tip_out"
+  },
+  {
+   "description": "drop to bank",
+   "amount": "400.00",
+   "kind": "cash_drop"
+  }
+ ],
+ "total_stated": "64.41"
+}

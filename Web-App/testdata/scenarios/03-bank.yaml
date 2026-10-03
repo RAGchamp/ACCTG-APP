@@ -1,0 +1,40 @@
+# Bank statement, PDF and CSV (plan §15.4)
+- id: bank-month-full
+  title: A full bank month - payouts, rent, utilities, loan split, owner draw and contribution, sales tax, NSF, petty cash
+  area: Bank statement
+  opening: {bank: "18250.00", loan: "30000.00", equipment: "45000.00", sales_tax_payable: "1841.20"}
+  events:
+    - {type: square_day, date: 2026-01-02, instore: 1480.00, delivery: 310.00, delivery_fees: 36.00, discounts: 42.00, comps: 18.00, tips: 96.50, cash: 452.00}
+    - {type: square_day, date: 2026-01-03, instore: 1712.00, delivery: 355.00, delivery_fees: 42.00, discounts: 25.00, tips: 118.00, cash: 390.00}
+    - {type: platform_week, platform: DoorDash, start: 2026-01-01, end: 2026-01-07, subtotal: 2140.00, promotions: 35.00, adjustments: "-12.50"}
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}
+    - {type: bank, kind: utility, date: 2026-01-14, amount: "612.33"}
+    - {type: bank, kind: gas_utility, date: 2026-01-16, amount: "288.19"}
+    - {type: bank, kind: phone, date: 2026-01-18, amount: "149.99"}
+    - {type: bank, kind: insurance, date: 2026-01-20, amount: "410.00"}
+    - {type: bank, kind: loan_payment, date: 2026-01-10, amount: 0, principal: "812.40", interest: "187.60"}
+    - {type: bank, kind: owner_draw, date: 2026-01-25, amount: "2500.00"}
+    - {type: bank, kind: owner_contribution, date: 2026-01-05, amount: "5000.00"}
+    - {type: bank, kind: sales_tax_payment, date: 2026-01-29, amount: "1841.20"}
+    - {type: bank, kind: bank_fee, date: 2026-01-31, amount: "15.00"}
+    - {type: bank, kind: petty_transfer, date: 2026-01-07, amount: "200.00"}
+    - {type: check_in, date: 2026-01-08, payer: Trinity College Events, food: "520.00", deposit_date: 2026-01-09,
+       bounced: {date: 2026-01-15, fee: "12.00"}}
+
+- id: bank-csv-only
+  title: The bank statement as a CSV export (no Claude call for extraction)
+  area: Bank statement
+  bank_format: csv
+  events:
+    - {type: square_day, date: 2026-01-09, instore: 980.00, delivery: 120.00, delivery_fees: 12.00, tips: 44.00, cash: 260.00}
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}
+    - {type: bank, kind: owner_draw, date: 2026-01-24, amount: "1500.00"}
+
+- id: bank-pdf-and-csv
+  title: The same bank month as CSV and as PDF -> booked once, the PDF is support only
+  area: Bank statement
+  bank_format: both
+  events:
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}
+    - {type: bank, kind: utility, date: 2026-01-14, amount: "540.12"}
+    - {type: square_day, date: 2026-01-10, instore: 1120.00, tips: 55.00, cash: 300.00}

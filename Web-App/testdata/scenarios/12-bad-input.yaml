@@ -1,0 +1,31 @@
+# Bad input (plan §15.4)
+- id: bad-blank-and-flyer
+  title: A blank page and a menu flyer -> not financial, rejected automatically
+  area: Bad input
+  events:
+    - {type: bad_file, kind: blank, date: 2026-01-10}
+    - {type: bad_file, kind: flyer, date: 2026-01-11}
+
+- id: bad-password-and-corrupt
+  title: A password-protected PDF and a corrupt file -> refused at intake with a reason
+  area: Bad input
+  events:
+    - {type: bad_file, kind: password, date: 2026-01-10}
+    - {type: bad_file, kind: corrupt, date: 2026-01-11}
+
+- id: bad-wrong-year
+  title: A 2025 receipt -> before the books start, rejected by the owner
+  area: Bad input
+  events:
+    - {type: purchase, date: 2025-12-20, vendor: Restaurant Depot, payment: cash, expect: reject,
+       propose_errors_expected: ["before the books start"],
+       owner: [{action: reject, reason: "prior year - belongs to the 2025 books"}],
+       items: [{desc: MOZZ 6LB, amount: 24.99, account: "5010"}]}
+
+- id: bad-photo-quality
+  title: A phone photo of a receipt (low resolution, skewed)
+  area: Bad input
+  difficulty: photo
+  events:
+    - {type: purchase, date: 2026-01-18, vendor: Restaurant Depot, payment: cash,
+       items: [{desc: PEPPERONI 12.5LB, amount: 61.40, account: "5010"}]}

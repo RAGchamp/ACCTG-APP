@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui %}
+{% block title %}Review input documents ({{ boxes|length }}){% endblock %}
+{% block head %}<style>
+  .docbox .scan { max-height: 85vh; overflow: auto; }
+  .docbox details > summary { font-weight: 600; cursor: pointer; margin: .4rem 0; }
+  .docbox .kv td:first-child { color: var(--bs-secondary-color); white-space: nowrap; width: 1%; }
+  .docbox .sub td, .docbox .sub th { font-size: .8rem; padding: .1rem .35rem; }
+  .docbox tr.inactive td { text-decoration: line-through; color: var(--bs-secondary-color); }
+  .docbox .proposed { border-left: 3px dashed var(--bs-secondary-color); padding-left: .4rem; }
+  .badge-sandbox { background: #e8710a; color: #fff; }
+  .fb { background: var(--bs-tertiary-bg); }
+</style>{% endblock %}
+
+{% macro value(v) -%}
+  {%- if v is mapping -%}
+    <table class="table table-sm table-borderless sub kv mb-0">{% for k, x in v.items() %}<tr><td>{{ k }}</td><td>{{ value(x) }}</td></tr>{% endfor %}</table>
+  {%- elif v is iterable and v is not string -%}
+    {%- set first = v|first if v else none -%}
+    {%- if first is mapping -%}
+      {%- set ns = namespace(keys=[]) -%}
+      {%- for row in v %}{% for k in row %}{% if k not in ns.keys %}{% set ns.keys = ns.keys + [k] %}{% endif %}{% endfor %}{% endfor -%}
+      <table class="table table-sm table-bordered table-striped sub mb-0"><thead><tr>{% for k in ns.keys %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for row in v %}<tr>{% for k in ns.keys %}<td>{{ value(row.get(k)) }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+    {%- else -%}{{ v|join(', ') }}{%- endif -%}
+  {%- elif v is none -%}<span class="text-body-secondary">–</span>
+  {%- else -%}<span class="{{ 'text-danger fw-semibold' if '[?]' in (v|string) }}">{{ v }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+{% set ns0 = namespace(posted=0, open=0, feedback=0) %}
+{% for b in boxes if not b.missing %}{% set ns0.posted = ns0.posted + (1 if b.doc.status in ('posted', 'support') else 0) %}{% set ns0.open = ns0.open + (1 if b.doc.status in ('extracted', 'proposed', 'needs_review') else 0) %}{% set ns0.feedback = ns0.feedback + b.earlier|length %}{% endfor %}
+{% call(part) ui.overview('Review input documents', boxes|length ~ ' document(s). Tagging is computed by code from the posted ledger (or the open proposal, marked as not posted), the chart of accounts and tax_rules.') %}
+  {% if part == 'actions' %}
+    <a class="btn btn-outline-secondary bg-body" href="/doc-review?{{ back }}">← Back to the list</a>
+  {% else %}
+    <div class="row g-2 row-cols-2 row-cols-lg-4">
+      {{ ui.tile('Documents', boxes|length, 'shown below') }}
+      {{ ui.tile('Booked', ns0.posted, 'posted or linked (support)') }}
+      {{ ui.tile('In the Review queue', ns0.open, 'not posted yet') }}
+      {{ ui.tile('Earlier feedback', ns0.feedback, 'in the feedback folder') }}
+    </div>
+  {% endif %}
+{% endcall %}
+{% if too_many %}<div class="alert alert-warning small">You selected {{ selected }} documents; only the first {{ max_docs }} are shown.
+  Select fewer to see the rest.</div>{% endif %}
+{% if not boxes %}<div class="alert alert-secondary">No documents selected. <a href="/doc-review">Choose documents</a>.</div>{% endif %}
+
+{% for b in boxes %}
+{% if b.missing %}
+<div class="alert alert-warning">Document {{ b.key }} no longer exists.</div>
+{% else %}
+{% set doc, f, t = b.doc, b.file, b.tagging %}
+<div class="card docbox mb-4 shadow-sm" id="box-{{ loop.index }}" data-books="{{ b.books }}" data-doc="{{ doc.id }}">
+  <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+    <b>{{ b.title }}</b>
+    <span class="badge {{ 'badge-sandbox' if b.biz.is_sandbox else 'text-bg-primary' }}">{{ 'sandbox: ' ~ b.books if b.biz.is_sandbox else 'live books' }}</span>
+    <span class="badge text-bg-light border">{{ doc.status|statuslabel }}</span>
+    <span class="small text-body-secondary ms-auto">document #{{ doc.id }} ·
+      <a href="/doc-review/{{ b.books }}/files/{{ f.id }}/original" target="_blank">{{ f.filename }}</a>
+      · page(s) {{ b.pages|join(', ') }}{{ ' · document ' ~ doc.part ~ ' of ' ~ b.siblings ~ ' in this file' if b.siblings > 1 }}
+      {% if b.books == active_name %}· <a href="/review/{{ doc.id }}">open in Review</a>
+      {% else %}· <a href="#" onclick="switchAndOpen('{{ b.books }}', {{ doc.id }});return false" title="Switches the open books">switch &amp; open in Review</a>{% endif %}</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <!-- left: the scan -->
+      <div class="col-lg-5"><div class="scan">
+        {% if f.kind == 'pdf' %}
+          {% for p in b.pages %}<a href="/doc-review/{{ b.books }}/files/{{ f.id }}/original#page={{ p }}" target="_blank" title="Open the original PDF">
+            <img class="doc-image mb-2" loading="lazy" src="/doc-review/{{ b.books }}/files/{{ f.id }}/page/{{ p }}.jpg" alt="page {{ p }}"></a>{% endfor %}
+        {% else %}
+          <div class="alert alert-secondary small py-1 mb-1">CSV export: imported exactly, without Claude.</div>
+          <pre class="mono border rounded p-2 small" style="max-height:70vh;overflow:auto">{{ b.csv_text }}</pre>
+        {% endif %}
+      </div></div>
+
+      <!-- right: the interpretation -->
+      <div class="col-lg-7 small">
+        {% for n in t.notes %}<div class="alert alert-info py-1 mb-2">{{ n }}</div>{% endfor %}
+
+        <details open><summary>1. Extracted data <span class="fw-normal text-body-secondary">({{ doc.doc_type|doclabel }})</span></summary>
+          {% for fl in b.flags %}<div class="flag-{{ fl.level }}">● [{{ fl.level }}] {{ fl.message }}</div>{% else %}<div class="text-success">✓ no check flags</div>{% endfor %}
+          <div class="mt-1">{{ value(b.extraction) }}</div>
+          <details class="mt-1"><summary class="fw-normal">raw JSON</summary><pre class="mono border rounded p-2" style="max-height:300px;overflow:auto">{{ b.extraction|tojson(indent=1) }}</pre></details>
+        </details>
+
+        <details open><summary>2. Ledger tagging (debit / credit)</summary>
+          {% for e in t.entries %}
+          <div class="{{ 'proposed' if not e.posted }}">
+          <table class="table table-sm sub mb-2">
+            <tr class="table-light"><th colspan="4">{% if e.posted %}entry #{{ e.entry_id }}{% else %}proposed (not posted){% endif %} · {{ e.date }} · {{ e.memo }}
+              <span class="fw-normal text-body-secondary">· {{ e.kind }}{{ ' of #' ~ e.reverses if e.reverses }}{{ ' · reversed by #' ~ e.reversed_by if e.reversed_by }}{{ ' · from document #' ~ e.document_id if e.document_id and e.document_id != doc.id }}</span></th></tr>
+            <tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th>Matched</th></tr>
+            {% for l in e.lines %}<tr class="{{ 'inactive' if not e.active }}">
+              <td>{{ l.account }} {{ l.name }}{% if l.party or l.memo %}<div class="text-body-secondary">{{ l.party }} {{ l.memo }}</div>{% endif %}</td>
+              <td class="num">{{ l.debit_cents|money(blank_zero=True) }}</td><td class="num">{{ l.credit_cents|money(blank_zero=True) }}</td>
+              <td>{% if l.settlement %}<span class="{{ 'text-success' if l.settlement.kind != 'open' else 'text-warning-emphasis' }}">⇄ {{ l.settlement.text }}</span>{% endif %}</td></tr>{% endfor %}
+          </table></div>
+          {% else %}<div class="text-body-secondary">No ledger lines.</div>{% endfor %}
+        </details>
+
+        <details open><summary>3. Financial statements</summary>
+          {% set ns = namespace(any=false) %}
+          <table class="table table-sm table-striped sub mb-1">
+            <thead><tr><th>Account</th><th>Statement › section › line</th><th class="num">This document</th><th class="num">Line total</th><th>Period</th></tr></thead>
+            {% for e in t.entries if e.active %}{% for l in e.lines %}{% for s in l.statements %}{% set ns.any = true %}
+            <tr><td>{{ l.account }}</td><td><b>{{ s.statement }}</b>{{ ' › ' ~ s.section if s.section }} › {{ s.line }}{% if s.note %}<div class="text-body-secondary">{{ s.note }}</div>{% endif %}</td>
+              <td class="num">{{ s.amount_cents|money }}</td><td class="num">{{ s.line_total_cents|money if s.line_total_cents is not none }}</td><td>{{ s.period or '' }}</td></tr>
+            {% endfor %}{% endfor %}{% endfor %}
+          </table>
+          {% if not ns.any %}<div class="text-body-secondary">No effect on the financial statements.</div>{% endif %}
+          <div class="text-body-secondary">Every account also appears in the Trial balance and the General ledger. {% if t.source == 'proposal' %}<b>Not posted yet</b>: these show where the lines would go.{% endif %}</div>
+        </details>
+
+        <details open><summary>4. Tax documents</summary>
+          {% set ns2 = namespace(any=false) %}
+          <table class="table table-sm table-striped sub mb-1">
+            <thead><tr><th>Account</th><th>Form › line</th><th class="num">Amount</th><th>Period</th></tr></thead>
+            {% for e in t.entries if e.active %}{% for l in e.lines %}{% for x in l.tax %}{% set ns2.any = true %}
+            <tr><td>{{ l.account }}</td><td><b>{{ x.form }}</b> › {{ x.line }}{{ ' (' ~ x.label ~ ')' if x.label and x.label != x.line }}{% if x.note %}<div class="text-body-secondary">{{ x.note }}</div>{% endif %}</td>
+              <td class="num">{{ x.amount_cents|money if x.amount_cents is not none }}</td><td>{{ x.period }}</td></tr>
+            {% endfor %}{% if not l.tax and l.statements %}<tr class="text-body-secondary"><td>{{ l.account }}</td><td colspan="3">No direct tax line (balance sheet only)</td></tr>{% endif %}{% endfor %}{% endfor %}
+            {% for x in t.document_tax %}{% set ns2.any = true %}
+            <tr><td>document</td><td><b>{{ x.form }}</b> › {{ x.line }} ({{ x.label }}){% if x.note %}<div class="text-body-secondary">{{ x.note }}</div>{% endif %}</td>
+              <td class="num">{{ x.amount_cents|money if x.amount_cents is not none }}</td><td>{{ x.period }}</td></tr>{% endfor %}
+          </table>
+          {% for err in t.tax_errors %}<div class="text-danger">{{ err }}</div>{% endfor %}
+          {% if not ns2.any %}<div class="text-body-secondary">No effect on the tax worksheets.</div>{% endif %}
+          <div class="text-body-secondary">Draft worksheets for review with the CPA; rules from <span class="mono">tax_rules\</span>.</div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- feedback -->
+  <div class="card-footer fb small">
+    <div class="fw-semibold mb-1">Feedback: is the interpretation of this document wrong?</div>
+    <div class="d-flex flex-wrap gap-3 mb-1">{% for k, label in categories.items() %}
+      <div class="form-check mb-0"><input class="form-check-input fb-cat" type="checkbox" value="{{ k }}" id="c-{{ loop.index }}-{{ b.key }}">
+        <label class="form-check-label" for="c-{{ loop.index }}-{{ b.key }}">{{ label }}</label></div>{% endfor %}</div>
+    <textarea class="form-control form-control-sm fb-text" rows="2" maxlength="{{ text_max }}"
+      placeholder="What is wrong, and what is right? e.g. The total is 1,798.77, not 1,789.77. / The cups are packaging (5030). / This was a personal purchase."></textarea>
+    <div class="text-body-secondary mb-2">max {{ text_max }} characters</div>
+
+    <div class="fw-semibold">Re-process</div>
+    <div class="form-check"><input class="form-check-input fb-act" type="radio" name="act-{{ b.key }}" value="none" id="a0-{{ b.key }}" checked>
+      <label class="form-check-label" for="a0-{{ b.key }}">Don't re-process, just save the feedback</label></div>
+    <div class="form-check"><input class="form-check-input fb-act" type="radio" name="act-{{ b.key }}" value="repropose" id="a1-{{ b.key }}">
+      <label class="form-check-label" for="a1-{{ b.key }}">Re-propose the entries using my feedback (Claude reviser; keeps the extracted data)</label></div>
+    <div class="form-check"><input class="form-check-input fb-act" type="radio" name="act-{{ b.key }}" value="reextract" id="a2-{{ b.key }}">
+      <label class="form-check-label" for="a2-{{ b.key }}">Re-extract: read the {{ 'scan' if f.kind == 'pdf' else 'export' }} again{{ ' (all ' ~ b.siblings ~ ' documents of this file are redone)' if b.siblings > 1 }}, then re-propose</label>
+      {% if f.kind == 'pdf' %}<label class="ms-3"><input class="form-check-input fb-dpi" type="checkbox"> at higher resolution (300 dpi)</label>{% endif %}</div>
+    <div class="form-check"><input class="form-check-input fb-act" type="radio" name="act-{{ b.key }}" value="corrected" id="a3-{{ b.key }}">
+      <label class="form-check-label" for="a3-{{ b.key }}">I corrected the extracted figures (edit below), then re-propose</label></div>
+    <textarea class="form-control mono fb-json d-none mt-1" rows="10">{{ b.extraction|tojson(indent=1) }}</textarea>
+    {% if b.biz.ai_mode == 'replay' %}<div class="form-check mt-1 fb-live-row d-none"><input class="form-check-input fb-live" type="checkbox" id="l-{{ b.key }}" checked>
+      <label class="form-check-label" for="l-{{ b.key }}">Use live Claude for this (this sandbox replays stored answers, which would not change; costs usage)</label></div>{% endif %}
+    <div class="fb-impact mt-2"></div>
+    <div class="form-check fb-together-row d-none"><input class="form-check-input fb-together" type="checkbox" id="t-{{ b.key }}">
+      <label class="form-check-label" for="t-{{ b.key }}">Re-process together (un-post the documents booked against this one too; they go back to the Review queue)</label></div>
+    <div class="text-body-secondary mt-1">Re-processing never posts: a posted document's entries are reversed and the new proposal waits on the Review screen.</div>
+    <div class="d-flex gap-2 align-items-center mt-2">
+      <button class="btn btn-sm btn-primary fb-save">Save feedback</button>
+      <span class="fb-result"></span>
+    </div>
+    {% if b.earlier %}<details class="mt-2"><summary class="fw-normal">Earlier feedback on this document ({{ b.earlier|length }})</summary>
+      {% for e in b.earlier %}<div><span class="mono">{{ e.file }}</span> · {{ e.action }} · {{ e.result or '' }}{% if e.text %} · “{{ e.text }}”{% endif %}</div>{% endfor %}</details>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+{% block scripts %}<script>const MAX_DOCS = {{ max_docs }};</script><script src="/static/doc_review.js"></script>{% endblock %}

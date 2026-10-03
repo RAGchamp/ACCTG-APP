@@ -1,0 +1,39 @@
+# Handwritten cash logs (plan §15.4)
+- id: cash-log-day
+  title: A daily cash sheet - cash sales not in Square, petty purchase, tip-out, cash drop deposited
+  area: Handwritten cash logs
+  opening: {bank: "15000.00", cash: "400.00", petty: "150.00"}
+  events:
+    - type: cash_log
+      date: 2026-01-14
+      cash_sales: "60.00"
+      petty: [{desc: paper towels - CVS, amount: "8.99", account: "6310"}]
+      tip_out: "45.00"
+      cash_drop: "300.00"
+      deposit_date: 2026-01-15
+
+- id: cash-log-crossed-out
+  title: A cash sheet with a figure crossed out and rewritten
+  area: Handwritten cash logs
+  opening: {bank: "15000.00", cash: "400.00"}
+  events:
+    - {type: cash_log, date: 2026-01-16, cash_sales: "84.00", crossed_out: true}
+
+- id: cash-log-illegible
+  title: An illegible digit on a cash sheet -> [?], the owner confirms the figure
+  area: Handwritten cash logs
+  difficulty: messy
+  opening: {bank: "15000.00", cash: "400.00", petty: "150.00"}
+  events:
+    - type: cash_log
+      date: 2026-01-19
+      cash_sales: "112.00"
+      petty: [{desc: ice - gas station, amount: "12.50", account: "6310"}]
+      illegible: entries.2.amount
+
+- id: cash-log-sum-error
+  title: The owner's total on the sheet does not add up -> flagged, confirmed
+  area: Handwritten cash logs
+  opening: {bank: "15000.00", cash: "400.00"}
+  events:
+    - {type: cash_log, date: 2026-01-22, cash_sales: "96.00", sum_error: "10.00"}

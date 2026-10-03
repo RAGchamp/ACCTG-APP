@@ -1,0 +1,39 @@
+# Checks (plan §15.4)
+- id: check-rent
+  title: A check to the landlord (no invoice) - booked from the check image, cleared by the bank line
+  area: Checks
+  events:
+    - {type: check_out, date: 2026-01-02, payee: Farmington Ave Properties LLC, amount: "2800.00", account: "6100", memo: January rent}
+
+- id: check-pays-invoice
+  title: A vendor invoice paid by check - the check image is support only, the bank line settles the invoice
+  area: Checks
+  events:
+    - {type: purchase, date: 2026-01-12, vendor: Hartford Restaurant Supply, payment: check, check_doc: true, invoice: true,
+       items: [{desc: WALK-IN COOLER SERVICE CALL, amount: 385.00, account: "6300"}]}
+
+- id: check-incoming-catering
+  title: A catering customer's check (food + tax), deposited
+  area: Checks
+  events:
+    - {type: check_in, date: 2026-01-20, payer: West End Law Group, food: "640.00", deposit_date: 2026-01-21}
+
+- id: check-void
+  title: A voided check -> nothing to post
+  area: Checks
+  events:
+    - {type: check_out, date: 2026-01-06, payee: Nutmeg Produce, amount: "215.00", account: "5010", void: true}
+    - {type: bank, kind: rent, date: 2026-01-02, amount: "4200.00"}
+
+- id: check-words-mismatch
+  title: The written amount differs from the figures -> flagged, the owner confirms
+  area: Checks
+  events:
+    - {type: check_out, date: 2026-01-09, payee: Capitol Pest Control, amount: "185.00", words_amount: "158.00", account: "6300", memo: January service}
+
+- id: check-bounced
+  title: A customer's check bounces - receivable and NSF fee
+  area: Checks
+  events:
+    - {type: check_in, date: 2026-01-08, payer: Parkville Youth Soccer, food: "300.00", deposit_date: 2026-01-09,
+       bounced: {date: 2026-01-14, fee: "12.00"}}

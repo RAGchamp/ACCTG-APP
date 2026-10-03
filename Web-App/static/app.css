@@ -1,0 +1,159 @@
+/* The app's look (INFO\UI-REVAMP-PLAN.md): navy top bar, centered menu, light-yellow overview
+   box, light-blue table and card headers, striped record tables. Loaded after Bootstrap 5.3.
+   Every colour is a token here, with a dark-mode value (U3). */
+
+:root {
+  --sba-brand-navy: #04264d;
+  --sba-brand-yellow: #ffd60a;
+  --sba-menu-bg: #f1f3f5;
+  --sba-menu-border: #dee2e6;
+  --sba-menu-active: #04264d;
+  --sba-overview-bg: #fff8dc;
+  --sba-overview-border: #f1e2a4;
+  --sba-tile-bg: #ffffff;
+  --sba-head-bg: #e3eefc;
+  --sba-head-text: #0b2545;
+  --sba-head-border: #c9dcf5;
+  --sba-stripe: rgba(4, 38, 77, .045);
+  --sba-sandbox: #e8710a;
+  --sba-sticky-top: 56px;           /* height of the sticky menu bar (U4) */
+}
+[data-bs-theme="dark"] {
+  --sba-menu-bg: #1f2328;
+  --sba-menu-border: #343a40;
+  --sba-menu-active: #ffd60a;
+  --sba-overview-bg: #33301c;
+  --sba-overview-border: #5c5222;
+  --sba-tile-bg: #212529;
+  --sba-head-bg: #1d2e45;
+  --sba-head-text: #dbe7f7;
+  --sba-head-border: #2c4467;
+  --sba-stripe: rgba(255, 255, 255, .045);
+}
+
+body { padding-bottom: 60px; }
+
+/* ---------------------------------------------------------------- top bar (spec S1) */
+.sba-topbar {
+  background: var(--sba-brand-navy);
+  color: var(--sba-brand-yellow);
+  padding: .55rem 1.5rem;
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+}
+.sba-topbar .brand { display: inline-flex; align-items: center; }
+.sba-topbar .brand img { height: 40px; width: auto; display: block; }
+.sba-topbar .tagline {
+  font-weight: 600; font-size: 1rem; color: var(--sba-brand-yellow);
+  letter-spacing: .15em; word-spacing: .6em; font-style: italic; text-align: right;
+}
+@media (max-width: 575.98px) { .sba-topbar .tagline { display: none; } }
+
+/* ---------------------------------------------------------------- sandbox bar (U2) */
+.sandbox-bar { background: var(--sba-sandbox); color: #fff; }
+
+/* ---------------------------------------------------------------- centered menu (spec S2, U1, U4) */
+.sba-menu {
+  background: var(--sba-menu-bg);
+  border-bottom: 1px solid var(--sba-menu-border);
+  position: sticky; top: 0; z-index: 1030;
+  min-height: var(--sba-sticky-top);
+  padding-top: .35rem; padding-bottom: .35rem;
+}
+.sba-menu .nav-link { color: var(--bs-secondary-color); padding: .45rem .6rem; border-bottom: 2px solid transparent; }
+.sba-menu .nav-link:hover { color: var(--bs-emphasis-color); }
+.sba-menu .nav-link.active { color: var(--bs-emphasis-color); font-weight: 600; border-bottom-color: var(--sba-menu-active); }
+.sba-menu .sba-books { min-width: 12rem; }
+@media (min-width: 992px) {
+  /* links truly centered, the books dropdown pinned to the right edge */
+  .sba-menu .sba-menu-grid { display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .sba-menu .sba-books-cell { justify-self: end; }
+}
+@media (max-width: 991.98px) {
+  .sba-menu .sba-books-cell { padding: .4rem 0; }
+}
+
+/* ---------------------------------------------------------------- overview box (spec S3) */
+.sba-overview {
+  background: var(--sba-overview-bg);
+  border: 1px solid var(--sba-overview-border);
+  border-radius: .6rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.sba-overview .sba-title { font-size: 1.35rem; font-weight: 600; margin: 0; }
+.sba-overview .sba-sub { font-size: .85rem; color: var(--bs-secondary-color); }
+.sba-overview .sba-head { flex: 1 1 20rem; min-width: 0; }     /* the buttons stay on the right */
+.sba-overview .sba-sub-inline { font-size: .9rem; font-weight: 400; color: var(--bs-secondary-color); }
+.sba-overview .sba-body:not(:empty) { margin-top: .75rem; }
+.tile { border-radius: .5rem; background: var(--bs-tertiary-bg); padding: .75rem 1rem; height: 100%; position: relative; }
+.sba-overview .tile { background: var(--sba-tile-bg); border: 1px solid var(--sba-overview-border); }
+.tile .v { font-size: 1.35rem; font-weight: 600; }
+.tile .t { font-size: .8rem; color: var(--bs-secondary-color); }
+.tile .v.good { color: var(--bs-success-text-emphasis); }
+.tile .v.bad { color: var(--bs-danger-text-emphasis); }
+
+/* a light-yellow help box inside a page (e.g. "Reversed an entry by mistake?" on the Ledger) */
+.sba-note {
+  background: var(--sba-overview-bg);
+  border: 1px solid var(--sba-overview-border);
+  border-radius: .6rem;
+  padding: .75rem 1.25rem;
+}
+@media print { .sba-note { display: none; } }
+
+/* ---------------------------------------------------------------- headers in light blue (spec S4) */
+.card > .card-header,
+.card > details > summary.card-header {
+  background: var(--sba-head-bg); color: var(--sba-head-text);
+  border-bottom-color: var(--sba-head-border); font-weight: 600;
+}
+.card > .card-header a { font-weight: 400; }
+.table > thead > tr > th,
+.table > thead > tr > td {
+  background-color: var(--sba-head-bg); color: var(--sba-head-text);
+  border-bottom-color: var(--sba-head-border); font-weight: 600;
+}
+/* section rows of the financial statements and worksheets */
+.table > tbody > tr.table-light > *, .table > tr.table-light > * {
+  --bs-table-bg: var(--sba-head-bg); --bs-table-color: var(--sba-head-text);
+  background-color: var(--sba-head-bg); color: var(--sba-head-text);
+}
+
+/* a column-header row in the overview's light yellow (e.g. Next tax dates) */
+.table > thead.sba-head-yellow > tr > th {
+  background-color: var(--sba-overview-bg); color: var(--bs-emphasis-color); border-bottom-color: var(--sba-overview-border);
+}
+
+/* a table filling a card: first and last columns line up with the card header's text,
+   and with column borders the card's own border is the table's outer border */
+.card .sba-card-table > :not(caption) > * > *:first-child { padding-left: var(--bs-card-cap-padding-x, 1rem); }
+.card .sba-card-table > :not(caption) > * > *:last-child { padding-right: var(--bs-card-cap-padding-x, 1rem); }
+.card .sba-card-table.table-bordered > :not(caption) > * > *:first-child { border-left-width: 0; }
+.card .sba-card-table.table-bordered > :not(caption) > * > *:last-child { border-right-width: 0; }
+.card .sba-card-table.table-bordered > :not(caption) > :last-child > tr:last-child > * { border-bottom-width: 0; }
+
+/* ---------------------------------------------------------------- striped records (spec S4, U5) */
+.table { --bs-table-striped-bg: var(--sba-stripe); --bs-table-hover-bg: rgba(13, 110, 253, .06); }
+.sba-list > .list-group-item:nth-child(odd) { background-color: color-mix(in srgb, var(--bs-body-bg) 95.5%, var(--sba-brand-navy)); }
+[data-bs-theme="dark"] .sba-list > .list-group-item:nth-child(odd) { background-color: color-mix(in srgb, var(--bs-body-bg) 95.5%, #ffffff); }
+.sba-list > .list-group-item.active, .sba-list > .list-group-item.active:nth-child(odd) {
+  background-color: var(--bs-primary-bg-subtle); color: var(--bs-emphasis-color); border-color: var(--bs-primary-border-subtle);
+}
+
+/* ---------------------------------------------------------------- shared bits (moved from base.html) */
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-sm td, .table-sm th { vertical-align: middle; }
+.doc-image { max-width: 100%; border: 1px solid var(--bs-border-color); background: #fff; }
+.flag-error { color: var(--bs-danger); } .flag-warn { color: var(--bs-warning-text-emphasis); }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: .85em; }
+#job-box { position: fixed; bottom: 12px; right: 12px; width: min(420px, calc(100vw - 24px)); z-index: 1080; }
+.sticky-col { position: sticky; top: calc(var(--sba-sticky-top) + 12px); }
+main.sba-main { padding-left: 1.25rem; padding-right: 1.25rem; }
+@media (max-width: 575.98px) { main.sba-main { padding-left: .75rem; padding-right: .75rem; } }
+
+/* ---------------------------------------------------------------- print */
+@media print {
+  .sba-topbar, .sba-menu, nav, .no-print, #job-box, .sandbox-bar { display: none !important; }
+  .sba-overview { background: none; border: 1px solid #999; }
+  .card > .card-header, .table > thead > tr > th { background: none !important; }
+}
